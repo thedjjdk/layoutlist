@@ -1,4 +1,5 @@
 """Resolve pilot avatars from record uploaders; never infer ownership from names."""
+import base64
 import collections
 import datetime as dt
 import json
@@ -66,6 +67,30 @@ def build(catalog, lookup_videos, lookup_channels, now):
         players[name.casefold()] = {'imageUrl': image, 'channelId': cid, 'channelTitle': snippet.get('title', ''), 'matchedVideos': sum(counts.values()), 'checkedAt': now}
     return {'version': 1, 'updatedAt': now, 'players': players, 'review': review}
 
+def embed_picture(url):
+    host = (urllib.parse.urlparse(url).hostname or '').lower()
+    if not (host.endswith('.ggpht.com') or host.endswith('.googleusercontent.com')):
+        raise RuntimeError('Unexpected YouTube thumbnail host; image requires review.')
+    with urllib.request.urlopen(url, timeout=30) as response:
+        mime = response.headers.get_content_type()
+        if mime not in ('image/png', 'image/jpeg', 'image/webp'):
+            raise RuntimeError('Unsupported avatar image format.')
+        image = response.read(1024 * 1024 + 1)
+    if len(image) > 1024 * 1024:
+        raise RuntimeError('Avatar exceeds 1 MB limit.')
+    return 'data:' + mime + ';base64,' + base64.b64encode(image).decode('ascii')
+
+def write_index(path, result):
+    html = path.read_text()
+    pattern = r'(<script type="application/json" id="youtube-avatar-data">\n).*?(\n</script>)'
+    payload = json.dumps(result, indent=2, ensure_ascii=True).replace('<', '\\u003c')
+    updated, count = re.subn(pattern, lambda m: m[1] + payload + m[2], html, flags=re.S)
+    if count != 1:
+        raise RuntimeError('Expected exactly one embedded avatar data block; no file changed.')
+    temporary = path.with_suffix('.html.tmp')
+    temporary.write_text(updated)
+    temporary.replace(path)
+
 def main():
     key = os.environ.get('YOUTUBE_API_KEY', '')
     if not key:
@@ -80,8 +105,11 @@ def main():
         catalog = list(pool.map(level, paths))
     now = dt.datetime.now(dt.timezone.utc).isoformat()
     result = build(catalog, lambda ids: youtube('videos', ids, key), lambda ids: youtube('channels', ids, key), now)
-    (ROOT / 'youtube-avatars.json').write_text(json.dumps(result, indent=2) + '\n')
+    for row in result['players'].values():
+        row['imageUrl'] = embed_picture(row['imageUrl'])
+    write_index(ROOT / 'index.html', result)
     print(f"Resolved {len(result['players'])} pilot avatars; {len(result['review'])} need review.")
 
 if __name__ == '__main__':
     main()
+
