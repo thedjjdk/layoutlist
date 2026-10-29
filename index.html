@@ -1843,7 +1843,7 @@ function catalogUpdateNotice(){
  if(!S.catalogTimestamp)return '';
  const updated=new Date(S.catalogTimestamp).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
  const state=S.refreshing?' · Refreshing in the background…':S.refreshFailed?' · Update unavailable; showing the last saved data.':'';
- return `<p class="smallstatus" data-catalog-status role="status">${S.catalogFromCache?'Saved data · ':''}Updated ${esc(updated)}${state}</p>`;
+ return `<p class="profile-note" style="font-size:11px;margin-bottom:12px" data-catalog-status role="status">${S.catalogFromCache?'Saved data · ':''}Updated ${esc(updated)}${state}</p>`;
 }
 async function loadLive(){
  if(begun)return;begun=true;
