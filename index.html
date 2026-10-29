@@ -1441,7 +1441,7 @@ function clanPage(){
 
 function playerRecordNames(level){return new Map((level.records||[]).filter(r=>r.user).map(r=>[String(r.user).trim().toLocaleLowerCase('en'),r]));}
 // Historical placements are manually annotated; official live level data supplies current ranks.
-const FORMER_TOP_ONE=new Set(['lightitup','brutalcalamity','huangquan','karma','sailingforce','chillychappers','ai','experiment','fallenskies','achelous','incision']);
+const FORMER_TOP_ONE=new Set(['lightitup','brutalcalamity','huangquan','karma','sailingforce','ai','experiment','fallenskies','achelous','incision']);
 function isFormerTopOne(level){
  const normalize=value=>String(value||'').toLocaleLowerCase('en').replace(/\(\s*2p\s*\)/gi,'').replace(/[^a-z0-9]/g,'');
  return FORMER_TOP_ONE.has(normalize(level?.name))||FORMER_TOP_ONE.has(normalize(level?.path));
