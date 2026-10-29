@@ -1,5 +1,4 @@
 """Resolve pilot avatars from record uploaders; never infer ownership from names."""
-import base64
 import collections
 import datetime as dt
 import json
@@ -67,7 +66,7 @@ def build(catalog, lookup_videos, lookup_channels, now):
         players[name.casefold()] = {'imageUrl': image, 'channelId': cid, 'channelTitle': snippet.get('title', ''), 'matchedVideos': sum(counts.values()), 'checkedAt': now}
     return {'version': 1, 'updatedAt': now, 'players': players, 'review': review}
 
-def embed_picture(url):
+def save_picture(url, name):
     host = (urllib.parse.urlparse(url).hostname or '').lower()
     if not (host.endswith('.ggpht.com') or host.endswith('.googleusercontent.com')):
         raise RuntimeError('Unexpected YouTube thumbnail host; image requires review.')
@@ -78,7 +77,17 @@ def embed_picture(url):
         image = response.read(1024 * 1024 + 1)
     if len(image) > 1024 * 1024:
         raise RuntimeError('Avatar exceeds 1 MB limit.')
-    return 'data:' + mime + ';base64,' + base64.b64encode(image).decode('ascii')
+    suffix = {'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp'}[mime]
+    stem = re.sub(r'[^a-z0-9_-]+', '-', name.casefold()).strip('-_')
+    if not stem:
+        raise RuntimeError('Invalid avatar filename.')
+    directory = ROOT / 'pfp'
+    directory.mkdir(exist_ok=True)
+    path = directory / f'{stem}.{suffix}'
+    temporary = path.with_suffix(path.suffix + '.tmp')
+    temporary.write_bytes(image)
+    temporary.replace(path)
+    return './pfp/' + path.name
 
 def write_index(path, result):
     html = path.read_text()
@@ -105,8 +114,8 @@ def main():
         catalog = list(pool.map(level, paths))
     now = dt.datetime.now(dt.timezone.utc).isoformat()
     result = build(catalog, lambda ids: youtube('videos', ids, key), lambda ids: youtube('channels', ids, key), now)
-    for row in result['players'].values():
-        row['imageUrl'] = embed_picture(row['imageUrl'])
+    for name, row in result['players'].items():
+        row['imageUrl'] = save_picture(row['imageUrl'], name)
     write_index(ROOT / 'index.html', result)
     print(f"Resolved {len(result['players'])} pilot avatars; {len(result['review'])} need review.")
 
