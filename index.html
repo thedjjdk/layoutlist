@@ -1392,8 +1392,8 @@ function applyLanguage(){
 function header(){const nav=[['list','List'],['stats','Stats Viewer'],['grind','Grind'],['roulette','Roulette'],['packs','Packs'],['submit','Submit Record'],['admin','Admin']];return `<header class="sitehead"><div class="container headinner"><a class="wordmark" href="#/list" data-page="list" aria-label="The Layout List home">LAYOUT<b> LIST</b></a><nav class="navlinks" aria-label="Main navigation">${nav.map(([key,label])=>`<button type="button" data-page="${key}" class="${(S.page==='detail'?'list':S.page)===key?'active':''}">${label}</button>`).join('')}</nav><button type="button" class="headsubmit" data-page="submit">SUBMIT A RECORD ↗</button>${languageButton()}${appearanceActions()}${appearancePicker()}<div class="mobilehead-tools"><button type="button" class="mobileicon ${S.menuOpen?'is-open':''}" data-menu-toggle="true" aria-label="${S.menuOpen?'Close':'Open'} navigation" aria-expanded="${S.menuOpen}" aria-controls="site-menu"><span class="menu-bars" aria-hidden="true"><i></i><i></i><i></i></span></button></div></div><div id="site-menu" class="mobile-menu ${S.menuOpen?'open':''}" role="navigation" aria-label="Mobile navigation" aria-hidden="${!S.menuOpen}" ${S.menuOpen?'':'inert'}><div class="mobile-menu-inner">${nav.map(([key,label])=>`<button data-page="${key}">${label}</button>`).join('')}<button data-search-toggle="true">Search layouts</button></div></div></header>`}
 function intro(){let title={list:'The Layout List',detail:'The Layout List',profile:'Player Profile',stats:'Stats Viewer',packs:'Level Packs',roulette:'Layout Roulette',grind:'Grind by Player',clan:'Clan Roster'}[S.page];let desc={list:'The ranked list of Geometry Dash layouts, using Layout List data in a familiar Pointercrate-style interface.',detail:'Browse verification footage, level information, and accepted records.',profile:'Accepted records, completed packs, and layout contributions for individual players.',stats:'Community records and completions calculated from published Layout List entries.',packs:'The official Layout List collections and challenges.',roulette:'A percentage-based challenge across real Layout List levels.',grind:'Select a player to see which ranked layouts they have not completed.',clan:'Member profiles, completion records, and clan affiliation.'}[S.page];return `<section class="pageintro container"><h1>${title}</h1><p>${desc}</p></section>`}
 function sidebar(){let max=S.levels.length;let accepted=S.levels.reduce((n,l)=>n+(l.records?.length||0),0);let completions=S.levels.reduce((n,l)=>n+(l.records?.filter(r=>Number(r.percent)===100).length||0),0);return `<aside class="sidebar"><section class="panel"><h2>List Editors</h2><p>For placement questions and record issues, contact the Layout List team through the official site.</p><div class="team-list"><a href="https://laylist.pages.dev/#/" target="_blank" rel="noopener noreferrer">Official Layout List</a><a href="${SOURCE}" target="_blank" rel="noopener noreferrer">Official data repository</a></div><p class="side-note">Rankings and level records come from the Layout List, not Pointercrate.</p></section><section class="panel"><h2>Record Submissions</h2><p>Completed a layout or made progress? Submit proof directly on this site. An admin will review it before it appears in site-approved records.</p><button type="button" class="sidebutton" data-page="submit">SUBMIT A RECORD ↗</button></section><section class="panel"><h2>List Statistics</h2><div class="bulletrows"><div><span>Ranked layouts</span><strong>${fmt(max)}</strong></div><div><span>Accepted records loaded</span><strong>${fmt(accepted)}</strong></div><div><span>100% completions loaded</span><strong>${fmt(completions)}</strong></div></div></section><section class="panel"><h2>Guidelines</h2><p>Visit the official site for current rules and record-submission information. This is an unofficial visual redesign.</p><a href="https://laylist.pages.dev/#/" target="_blank" rel="noopener noreferrer">View the official site ↗</a></section><section class="panel"><h2>Difficulty Tiers</h2><p>Filter the ranking by Layout List difficulty.</p><div class="tierlinks">${TIER.map((name,i)=>`<button class="tierchip" type="button" data-quicktier="${i}">${esc(name)}</button>`).reverse().join('')}</div></section></aside>`}
-function shell(main){return `<div class="container layout"><main class="content">${main}</main>${sidebar()}</div>`}
-function status(){return `<div class="smallstatus">${S.online?'<span class="online">● Connected to Layout List data</span>':S.loading?'● Connecting to Layout List data':'● Offline examples: live data could not be reached'} · ${fmt(S.levels.filter(l=>!l.pending&&!l.failed).length)} / ${fmt(S.levels.length)} level details available${S.loading?' · loading in the background':''}</div>`}
+function shell(main){return `<div class="container layout"><main class="content">${catalogUpdateNotice()}${main}</main>${sidebar()}</div>`}
+function status(){return `<div class="smallstatus">${S.catalogFromCache?'<span class="online">● Saved Layout List data</span>':S.online?'<span class="online">● Connected to Layout List data</span>':S.loading?'● Connecting to Layout List data':'● Offline examples: live data could not be reached'} · ${fmt(S.levels.filter(l=>!l.pending&&!l.failed).length)} / ${fmt(S.levels.length)} level details available${S.loading?' · loading in the background':''}</div>`}
 function isFormerTopOneSelection(level){return Number(level?.rank)===1||isFormerTopOne(level)}
 function getVisible(){let a=S.levels.filter(l=>{if(S.difficulty==='former-top-1s'){if(!isFormerTopOneSelection(l))return false}else if(S.difficulty!=='all'&&String(l.difficulty)!==S.difficulty)return false;let text=[l.name,l.id,l.rank,...(l.creators||[]),l.verifier,l.path].join(' ').toLowerCase();return !S.search||text.includes(S.search.toLowerCase())});return a.sort((a,b)=>a.rank-b.rank)}
 const PLAYER_PFP_IMAGES=Object.freeze({"djjdk": "./pfp/djjdk.jpg", "jdk": "./pfp/djjdk.jpg", "blathers": "./pfp/blathers.png", "mystikl": "./pfp/mystikl.webp"});
@@ -1815,7 +1815,101 @@ function render({keepScroll=false,restoreInput=false,alignTab=false}={}){let y=w
 function toast(message){let t=document.getElementById('toast');t.textContent=message;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2500)}
 function rerenderLater(){clearTimeout(deferTimer);deferTimer=setTimeout(()=>{if(['INPUT','SELECT'].includes(document.activeElement?.tagName))return;render({keepScroll:true})},700)}
 async function fetchJson(name,timeout=16000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),timeout);try{let r=await fetch(BASE+encodeURIComponent(name)+'.json',{signal:c.signal,cache:'no-cache'});if(!r.ok)throw Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(tm)}}
-async function loadLive(){if(begun)return;begun=true;let cache=loadJson('ll-dark-cache-v2',null);if(cache&&cache.levels?.length>50&&Date.now()-cache.timestamp<15*60*1000){S.levels=cache.levels;S.packs=cache.packs||SEED_PACKS;S.online=true;S.loading=false;S.all=S.levels.length;mergeApproved();render({keepScroll:true});return}try{const [paths,packs]=await Promise.all([fetchJson('_list'),fetchJson('_packs').catch(()=>SEED_PACKS)]);if(!Array.isArray(paths))throw Error('Invalid list index');S.levels=normalizeList(paths);S.packs=Array.isArray(packs)?packs:SEED_PACKS;S.online=true;S.all=S.levels.length;S.loaded=0;mergeApproved();render({keepScroll:true});let i=0;async function worker(){while(i<S.levels.length){let l=S.levels[i++];if(l.id&&!l.pending)continue;try{let o=await fetchJson(l.path);Object.assign(l,o,{path:l.path,rank:l.rank,difficulty:l.difficulty??o.difficulty,pending:false,previewOnly:false,records:Array.isArray(o.records)?o.records:[],_officialRecords:Array.isArray(o.records)?o.records:[]});S.loaded++;mergeApprovedLevel(l)}catch(e){l.failed=true;l.pending=false;S.fail++}if(S.loaded%30===0)rerenderLater()}}await Promise.all(Array.from({length:10},worker));S.loading=false;mergeApproved();render({keepScroll:true});if(!S.fail)saveJson('ll-dark-cache-v2',{levels:S.levels,packs:S.packs,timestamp:Date.now()})}catch(err){S.loading=false;S.online=false;S.levels=SEED.map(x=>({...x}));S.packs=SEED_PACKS;render({keepScroll:true})}}
+const CATALOG_CACHE_KEY='ll-dark-cache-v2';
+const CATALOG_FRESH_MS=15*60*1000;
+function validCatalogCache(cache){
+ if(!cache||!Number.isFinite(cache.timestamp)||cache.timestamp<=0||cache.timestamp>Date.now()+5*60*1000||!Array.isArray(cache.levels)||cache.levels.length<=50||!Array.isArray(cache.packs))return false;
+ if(cache.approved!==undefined&&(!Array.isArray(cache.approved)||cache.approved.some(record=>!record||typeof record!=='object')))return false;
+ if(cache.packs.some(pack=>!pack||typeof pack.name!=='string'||pack.levels!==undefined&&!Array.isArray(pack.levels)))return false;
+ const paths=new Set();
+ return cache.levels.every(level=>{
+  if(!level||typeof level.path!=='string'||!level.path||paths.has(level.path)||level.pending||level.failed||level.previewOnly||!Array.isArray(level.records)||level.records.some(record=>!record||typeof record!=='object')||level.creators!==undefined&&!Array.isArray(level.creators))return false;
+  paths.add(level.path);return true;
+ });
+}
+function saveLiveCatalog(){
+ if(!completeCatalog()||!S.catalogTimestamp)return false;
+ // Store official records once; merge site-approved records separately on restore.
+ const levels=S.levels.map(level=>{
+  const {_officialRecords,...data}=level;
+  return {...data,records:(_officialRecords||level.records||[]).filter(record=>!record.siteApproved)};
+ });
+ try{
+  localStorage.setItem(CATALOG_CACHE_KEY,JSON.stringify({version:3,levels,packs:S.packs,approved:S.approved,timestamp:S.catalogTimestamp}));
+  return true;
+ }catch{return false}
+}
+function catalogUpdateNotice(){
+ if(!S.catalogTimestamp)return '';
+ const updated=new Date(S.catalogTimestamp).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+ const state=S.refreshing?' · Refreshing in the background…':S.refreshFailed?' · Update unavailable; showing the last saved data.':'';
+ return `<p class="smallstatus" data-catalog-status role="status">${S.catalogFromCache?'Saved data · ':''}Updated ${esc(updated)}${state}</p>`;
+}
+async function loadLive(){
+ if(begun)return;begun=true;
+ const cache=loadJson(CATALOG_CACHE_KEY,null);
+ const hasCache=validCatalogCache(cache);
+ S.refreshing=false;S.refreshFailed=false;
+ if(hasCache){
+  S.levels=cache.levels.map(level=>{
+   const records=level.records.filter(record=>!record.siteApproved);
+   return {...level,records,_officialRecords:records};
+  });S.packs=cache.packs;
+  if(!S.approvedLoaded){
+   S.approved=Array.isArray(cache.approved)?cache.approved:cache.levels.flatMap(level=>level.records.filter(record=>record.siteApproved));
+  }
+  S.online=true;S.loading=false;S.fail=0;S.loaded=S.all=S.levels.length;
+  S.catalogTimestamp=cache.timestamp;S.catalogFromCache=true;
+  mergeApproved();
+  S.refreshing=Date.now()-cache.timestamp>=CATALOG_FRESH_MS;
+  render({keepScroll:true});
+  // A recent complete dataset is already current; older data refreshes without blocking it.
+  if(!S.refreshing)return;
+ }
+ try{
+  let packsFailed=false;
+  const [paths,packs]=await Promise.all([fetchJson('_list'),fetchJson('_packs').catch(()=>{packsFailed=true;return SEED_PACKS})]);
+  if(!Array.isArray(paths)||!Array.isArray(packs)||hasCache&&packsFailed)throw Error('Catalog unavailable');
+  const levels=normalizeList(paths);
+  if(levels.length<=50||new Set(levels.map(level=>level.path)).size!==levels.length)throw Error('Invalid list index');
+  // Background refreshes build a separate catalog. Never replace complete cached
+  // points or pack progress with partially loaded records.
+  if(!hasCache){
+   S.levels=levels;S.packs=packs;S.online=true;S.all=levels.length;S.loaded=0;S.fail=0;
+   mergeApproved();render({keepScroll:true});
+  }
+  let cursor=0,loaded=0,failures=0;
+  async function worker(){
+   while(cursor<levels.length){
+    const level=levels[cursor++];
+    try{
+     const data=await fetchJson(level.path);
+     if(!data||typeof data!=='object'||Array.isArray(data)||!Array.isArray(data.records))throw Error('Invalid level records');
+     Object.assign(level,data,{path:level.path,rank:level.rank,difficulty:level.difficulty??data.difficulty,pending:false,failed:false,previewOnly:false,records:data.records,_officialRecords:data.records});
+     loaded++;
+     if(!hasCache){S.loaded=loaded;mergeApprovedLevel(level)}
+    }catch{
+     level.failed=true;level.pending=false;failures++;
+     if(!hasCache)S.fail=failures;
+    }
+    if(!hasCache&&loaded&&loaded%30===0)rerenderLater();
+   }
+  }
+  await Promise.all(Array.from({length:10},worker));
+  if(hasCache&&failures)throw Error('Refresh incomplete');
+  S.levels=levels;S.packs=packs;S.online=true;S.loading=false;S.fail=failures;S.loaded=loaded;S.all=levels.length;
+  S.refreshing=false;S.refreshFailed=false;S.catalogFromCache=false;
+  S.catalogTimestamp=!failures&&!packsFailed?Date.now():0;
+  mergeApproved();
+  if(!failures&&!packsFailed)saveLiveCatalog();
+  render({keepScroll:true});
+ }catch{
+  S.refreshing=false;S.refreshFailed=hasCache;S.loading=false;
+  if(!hasCache){S.online=false;S.levels=SEED.map(level=>({...level}));S.packs=SEED_PACKS;S.catalogTimestamp=0;S.catalogFromCache=false}
+  render({keepScroll:true});
+ }
+}
+
 window.addEventListener('hashchange',()=>{fromHash();render()});
 // Close the language list when clicking or tapping outside; keep the closing transition.
 document.addEventListener('pointerdown', e=>{
@@ -1980,7 +2074,7 @@ async function saveThumbnailOverride(clear=false){
 function adminPage(){const a=S.admin;const isLogged=!!a.user;let control=isLogged?`<div class="admin-summary"><span>Signed in as <strong>${esc(a.user)}</strong></span><button class="secondary-action" data-admin-logout>Log out</button></div><div class="admin-summary">${['pending','accepted','rejected'].map(s=>`<button class="secondary-action" data-admin-filter="${s}" aria-pressed="${s===a.status}">${s[0].toUpperCase()+s.slice(1)}</button>`).join('')}</div><p>${fmt(a.total)} ${esc(a.status)} submissions</p>${a.items.map(x=>`<article class="reviewcard" data-id="${x.id}"><h3>${esc(x.player_name)}: ${x.percentage}% on ${esc(x.level_name)}</h3><div class="reviewmeta"><span>#${x.id} · ${esc(x.level_slug)}</span><span>GD ID: ${esc(x.gd_level_id||'N/A')}</span><span>${new Date(x.created_at*1000).toLocaleString()}</span>${x.hz?`<span>${x.hz} Hz</span>`:''}</div><p><a href="${esc(x.video_url)}" target="_blank" rel="noopener noreferrer">Watch submitted proof ↗</a></p>${x.comments?`<p>Submitter note: ${esc(x.comments)}</p>`:''}${x.status==='pending'?`<textarea class="review-note" maxlength="500" placeholder="Review note (required when rejecting)" aria-label="Review note for submission ${x.id}"></textarea><div class="reviewactions"><button class="primary-action" data-review="accepted" data-id="${x.id}">Accept</button><button class="secondary-action danger-action" data-review="rejected" data-id="${x.id}">Reject</button></div>`:`<p class="info-line">${esc(x.status)} by ${esc(x.reviewed_by||'admin')} ${x.reviewer_note?': '+esc(x.reviewer_note):''}</p>`}</article>`).join('')||'<p class="info-line">Nothing in this queue.</p>'}<div class="reviewactions"><button class="secondary-action" data-admin-page="prev" ${a.offset<=0?'disabled':''}>Previous</button><span class="info-line">Showing ${a.total?fmt(a.offset+1):0}–${fmt(Math.min(a.offset+100,a.total))} of ${fmt(a.total)}</span><button class="secondary-action" data-admin-page="next" ${a.offset+100>=a.total?'disabled':''}>Next</button></div>`:`<p>Only authorized list moderators can review submissions.</p><form id="admin-login-form" class="form-grid"><div class="field wide"><label for="admin-user">Admin username</label><input id="admin-user" name="username" autocomplete="username" required></div><div class="field wide"><label for="admin-password">Password</label><input id="admin-password" name="password" type="password" autocomplete="current-password" required></div><div class="field wide"><button class="primary-action" type="submit">Sign in</button></div></form>`;return `<div class="container"><section class="admin-panel"><h1>Record moderation</h1><p>Private queue for submissions received through this site.</p>${a.error?`<div class="form-alert error" role="alert">${esc(a.error)}</div>`:''}${control}${isLogged?thumbnailEditorPanel()+clanEditorPanel():''}</section></div>`}
 function mergeApprovedLevel(l){if(!l)return;const base=l._officialRecords||l.records||[];l._officialRecords=base.filter(r=>!r.siteApproved);const extra=S.approved.filter(r=>r.levelSlug===l.path&&!base.some(b=>String(b.user||'').toLowerCase()===String(r.user).toLowerCase()&&Number(b.percent)===Number(r.percent)));l.records=[...l._officialRecords,...extra]}
 function mergeApproved(){for(const l of S.levels)mergeApprovedLevel(l)}
-async function loadApproved(){try{let r=await fetch('/api/records',{credentials:'same-origin'});if(!r.ok)return;let result=await r.json();S.approved=Array.isArray(result.records)?result.records:[];mergeApproved();render({keepScroll:true})}catch{}}
+async function loadApproved(){try{let r=await fetch('/api/records',{credentials:'same-origin'});if(!r.ok)return;let result=await r.json();S.approved=Array.isArray(result.records)?result.records:[];S.approvedLoaded=true;mergeApproved();saveLiveCatalog();render({keepScroll:true})}catch{}}
 let configLoaded=false,turnstileSiteKey='';
 async function loadConfig(){if(configLoaded)return;configLoaded=true;try{let res=await fetch('/api/config');if(res.ok){let j=await res.json();turnstileSiteKey=j.turnstileSiteKey||'';if(turnstileSiteKey){let js=document.createElement('script');js.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';js.async=true;js.onload=mountTurnstile;document.head.appendChild(js)}}}catch{}}
 function mountTurnstile(){let el=document.getElementById('turnstile-container');if(el&&turnstileSiteKey&&window.turnstile&&!el.dataset.mounted){el.dataset.mounted='1';window.turnstile.render(el,{sitekey:turnstileSiteKey,theme:S.light?'light':'dark'})}}
