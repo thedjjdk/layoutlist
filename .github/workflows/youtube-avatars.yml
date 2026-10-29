@@ -29,7 +29,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html
+          git add index.html pfp/
           if ! git diff --cached --quiet; then
             git commit -m 'Refresh YouTube avatar metadata'
             git push
@@ -39,7 +39,7 @@ jobs:
         run: |
           mkdir _site
           cp index.html .nojekyll _site/
-          cp -r assets css js data _site/
+          cp -r assets css js data pfp _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
