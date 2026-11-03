@@ -1584,7 +1584,7 @@ function calculatePlayerPoints(player,eligiblePacks=[]){
  detail.sort((a,b)=>b.points-a.points||a.level.rank-b.level.rank);
  const recordPoints=roundPoint(detail.filter(p=>p.source==='record').reduce((sum,p)=>sum+p.points,0));
  const verificationPoints=roundPoint(detail.filter(p=>p.source==='verification').reduce((sum,p)=>sum+p.points,0));
- const packPoints=roundPoint(eligiblePacks.reduce((sum,item)=>sum+(item.paths.every(path=>player.completedPaths.has(path))?item.bonus:0),0));
+ const packPoints=roundPoint(eligiblePacks.reduce((sum,item)=>sum+(item.paths.filter(path=>player.completedPaths.has(path)).length>=item.required?item.bonus:0),0));
  return {recordPoints,verificationPoints,packPoints,totalPoints:roundPoint(recordPoints+verificationPoints+packPoints),pointDetail:detail};
 }
 function playerStats(){
@@ -1607,7 +1607,7 @@ function playerStats(){
  const eligiblePacks=completeCatalog()?allPacks().map(pack=>{
   const ix=tierPackIndex(pack);
   const paths=ix>=0?S.levels.filter(l=>Number(l.difficulty)===ix).map(l=>l.path):Array.isArray(pack.levels)?[...new Set(pack.levels)]:[];
-  return {paths,bonus:packBonus(pack)};
+  return {paths:[...new Set(paths)],required:ix>=0?5:paths.length,bonus:packBonus(pack)};
  }).filter(item=>item.paths.length&&item.bonus&&item.paths.every(path=>S.levels.some(l=>l.path===path&&!l.failed&&!l.pending))):[];
  for(const p of m.values()){
   p.completions=p.completedPaths.size;
@@ -1634,21 +1634,22 @@ function allPacks(){
 }
 function packProgress(pack,player){
  const ix=tierPackIndex(pack);
- const paths=ix>=0?S.levels.filter(l=>Number(l.difficulty)===ix).map(l=>l.path):Array.isArray(pack.levels)?[...new Set(pack.levels)]:[];
- const done=paths.filter(path=>player?.completedPaths.has(path)).length;
- const complete=completeCatalog()&&paths.length>0&&done===paths.length&&paths.every(path=>S.levels.some(l=>l.path===path&&!l.pending&&!l.failed));
- return {ix,paths,done,total:paths.length,complete,ratio:paths.length?Math.min(100,100*done/paths.length):0,ready:completeCatalog()};
+ const paths=[...new Set(ix>=0?S.levels.filter(l=>Number(l.difficulty)===ix).map(l=>l.path):Array.isArray(pack.levels)?pack.levels:[])];
+ const total=ix>=0?5:paths.length;
+ const done=Math.min(total,paths.filter(path=>player?.completedPaths.has(path)&&S.levels.some(l=>l.path===path&&!l.pending&&!l.failed)).length);
+ const complete=completeCatalog()&&total>0&&done>=total;
+ return {ix,paths,done,total,complete,ratio:total?Math.min(100,100*done/total):0,ready:completeCatalog()};
 }
 function packTile(pack,player,{showLevels=false}={}){
  const p=packProgress(pack,player);const difficulty=p.ix>=0?p.ix:pack.difficulty;
- const subtitle=p.ix>=0?`Complete every ${TIER[p.ix]} Layout on the list`:`${TIER[Number(difficulty)]||'Custom'} pack`;
+ const subtitle=p.ix>=0?`Complete any 5 ${TIER[p.ix]} Layouts`:`${TIER[Number(difficulty)]||'Custom'} pack`;
  const status=!p.total?(p.ix>=0?'No levels loaded for this tier':'No level IDs defined for this pack')
    :!p.ready?'Progress preview: full record data not yet verified'
-   :p.complete?'All levels completed. Pack earned!'
+   :p.complete?(p.ix>=0?'5 levels completed. Pack earned!':'All levels completed. Pack earned!')
    :`${p.total-p.done} completion${p.total-p.done===1?'':'s'} remaining`;
  const showRemaining=!!player&&!p.complete;
  const listedPaths=showRemaining?p.paths.filter(path=>!player.completedPaths.has(path)):p.paths;
- const levelDetails=showRemaining||(showLevels&&p.paths.length)
+ const levelDetails=p.ix<0&&(showRemaining||(showLevels&&p.paths.length))
   ? `<details class="pack-levels" style="margin-top:10px"><summary class="pack-cta">${showRemaining?`Levels still needed (${listedPaths.length})`:`View ${p.total} required layouts`}</summary><div class="pack-level-list" style="max-height:220px;overflow:auto;padding-top:9px">${listedPaths.length?listedPaths.map(path=>{const level=S.levels.find(x=>x.path===path);return `<div class="pack-entry"><button type="button" data-level="${esc(path)}">${!showRemaining&&player?.completedPaths.has(path)?'✓ ':'○ '}${esc(level?.name||displaySlug(path))}</button></div>`}).join(''):`<p class="profile-note">${p.total?'All loaded requirements are complete. Waiting for the full list to confirm this pack.':'Required levels have not loaded yet.'}</p>`}</div></details>`:'';
  return `<article class="pack ${p.complete?'pack-earned':''}"><div class="pack-head"><h3>${esc(pack.name)}</h3><span class="pack-count">${p.done} / ${p.total}</span></div><p>${esc(subtitle)}</p>${p.complete?'<span class="pack-earned-label">✓ EARNED</span>':''}<div class="pack-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.done}" aria-label="${esc(pack.name)} completion progress"><div class="pack-progress-fill" style="width:${p.ratio.toFixed(2)}%"></div></div><div class="pack-status">${esc(status)}</div>${levelDetails}</article>`;
 }
