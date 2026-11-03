@@ -97,6 +97,15 @@ body.light-mode .profile-accordion>summary:hover{background:#f0f2f4}
 .profile-hardest .textbutton{font-size:16px;text-align:left;max-width:100%;overflow-wrap:anywhere}
 .hardest-meta{display:block;color:var(--muted);font-size:11px;margin-top:4px}
 .hardest-empty{display:block;font-size:14px;font-weight:750;color:var(--text)}
+
+/* Decorative level artwork stays behind the readable, interactive content. */
+.profile-hardest{position:relative;overflow:hidden;isolation:isolate}
+.hardest-content{position:relative;z-index:2}
+.profile-hardest.has-thumbnail{background:#11161b}
+.hardest-backdrop{position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover;object-position:center;filter:saturate(.8);pointer-events:none}
+.profile-hardest.has-thumbnail::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(9,14,19,.86),rgba(9,14,19,.76) 55%,rgba(9,14,19,.68))}
+.profile-hardest.has-thumbnail .hardest-label,.profile-hardest.has-thumbnail .hardest-meta,.profile-hardest.has-thumbnail .profile-note{color:#d6dfe7}
+.profile-hardest.has-thumbnail .textbutton{color:#f5f8fa}
 </style><style>
 
 /* A near-reference-scale dark treatment of Pointercrate's 2017–2026 Demonlist layout. */
@@ -1657,8 +1666,9 @@ function hardestCompletion(player,levels=S.levels){
 }
 function hardestCompletionCard(player){
  const level=hardestCompletion(player),ready=completeCatalog();
+ const thumbnail=level?thumbFor(level):'';
  const verified=level&&String(level.verifier||'').trim().toLocaleLowerCase('en')===String(player?.name||'').trim().toLocaleLowerCase('en');
- return `<div class="profile-hardest" role="group" aria-label="Hardest Completion"><span class="hardest-label">Hardest Completion</span>${level?`<button type="button" class="textbutton" data-level="${esc(level.path)}">#${fmt(level.rank)}: ${esc(level.name)}</button><span class="hardest-meta">${esc(tier(level))} Layout · ${verified?'Verification':'100% record'}</span>`:`<span class="hardest-empty">${ready?'None yet':'Loading completions…'}</span>`}${level&&!ready?'<p class="profile-note" style="margin-top:7px">Based on loaded completions; still checking the full list.</p>':''}</div>`;
+ return `<div class="profile-hardest${thumbnail?' has-thumbnail':''}" role="group" aria-label="Hardest Completion">${thumbnail?`<img class="hardest-backdrop" src="${esc(thumbnail)}" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.remove()">`:''}<div class="hardest-content"><span class="hardest-label">Hardest Completion</span>${level?`<button type="button" class="textbutton" data-level="${esc(level.path)}">#${fmt(level.rank)}: ${esc(level.name)}</button><span class="hardest-meta">${esc(tier(level))} Layout · ${verified?'Verification':'100% record'}</span>`:`<span class="hardest-empty">${ready?'None yet':'Loading completions…'}</span>`}${level&&!ready?'<p class="profile-note" style="margin-top:7px">Based on loaded completions; still checking the full list.</p>':''}</div></div>`;
 }
 function profilePage(){
  const name=String(S.player||'').trim();const player=playerStats().find(p=>p.name.toLocaleLowerCase('en')===name.toLocaleLowerCase('en'));
