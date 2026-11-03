@@ -1131,6 +1131,26 @@ body.light-mode .former-top-one-badge{background:#e4e7ea;border-color:#c7ccd1;co
 .level-detail-badges .former-top-one-badge{margin:0}
 @media(max-width:780px){.level-card-title-row .two-player-badge{margin:0}}
 </style>
+<style id="profile-points-breakdown-style">
+button.profilestat.points-toggle{font:inherit;color:var(--text);text-align:center;width:100%;cursor:pointer;transition:border-color .15s,background .15s}
+button.profilestat.points-toggle:hover,button.profilestat.points-toggle[aria-expanded=true]{border-color:var(--accent);background:var(--surface2)}
+button.profilestat.points-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.points-breakdown[hidden]{display:none}
+.points-source{margin-top:12px;border:1px dashed var(--border);background:var(--surface2)}
+.points-source>summary{cursor:pointer;display:flex;align-items:center;gap:12px;padding:13px;font-size:13px;font-weight:800;list-style:none}
+.points-source>summary::before{content:'▸';color:var(--accent);flex:none}
+.points-source[open]>summary::before{content:'▾'}
+.points-source>summary strong{margin-left:auto;white-space:nowrap;font-size:12px}
+.points-source>summary:hover{background:var(--surface)}
+.points-source>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.points-source-content{padding:0 12px 12px}
+.points-source-content .profile-record{margin-top:8px}
+.points-source-content .points-tier{background:var(--surface)}
+.points-source-value{white-space:nowrap;font-size:12px}
+.points-source-row .textbutton{font-size:12px;text-align:left;overflow-wrap:anywhere}
+.points-breakdown-total{display:flex;justify-content:space-between;gap:16px;padding-top:16px;margin-top:16px;border-top:1px solid var(--border);font-weight:850}
+@media(max-width:540px){.points-source>summary{gap:7px;padding:11px;font-size:12px}.points-source>summary strong{font-size:11px}.points-source-content{padding:0 8px 10px}.points-source-row{align-items:flex-start}.points-source-value{align-self:flex-end}}
+</style>
 </head>
 <style id="v34-player-pfps">
 /* Version 34: distinct user profile images, matching roster and leaderboard avatars. */
@@ -1676,6 +1696,34 @@ function hardestCompletionCard(player){
  const verified=level&&String(level.verifier||'').trim().toLocaleLowerCase('en')===String(player?.name||'').trim().toLocaleLowerCase('en');
  return `<div class="profile-hardest${thumbnail?' has-thumbnail':''}" role="group" aria-label="Hardest Completion">${thumbnail?`<img class="hardest-backdrop" src="${esc(thumbnail)}" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.remove()">`:''}<div class="hardest-content"><span class="hardest-label">Hardest Completion</span>${level?`<button type="button" class="textbutton" data-level="${esc(level.path)}">#${fmt(level.rank)}: ${esc(level.name)}</button><span class="hardest-meta">${esc(tier(level))} Layout · ${verified?'Verification':'100% record'}</span>`:`<span class="hardest-empty">${ready?'None yet':'Loading completions…'}</span>`}${level&&!ready?'<p class="profile-note" style="margin-top:7px">Based on loaded completions; still checking the full list.</p>':''}</div></div>`;
 }
+function pointSourceRow(item){
+ const l=item.level;
+ return `<div class="profile-record points-source-row"><div><button type="button" class="textbutton" data-level="${esc(item.path)}">#${fmt(l.rank)}: ${esc(l.name)}</button><div class="record-meta">${esc(tier(l))} Layout · ${fmt(item.percent)}%</div></div><strong class="points-source-value">${pointLabel(item.points)} points</strong></div>`;
+}
+function pointSourceSection(label,points,body,extraClass=''){
+ return `<details class="points-source ${extraClass}"><summary><span>${esc(label)}</span><strong>${pointLabel(points)} points</strong></summary><div class="points-source-content">${body}</div></details>`;
+}
+function profilePointsBreakdown(player,earned){
+ if(S.pointsBreakdownPlayer!==player.name)return '<section id="profile-points-breakdown" hidden></section>';
+ const records=player.pointDetail.filter(item=>item.source==='record');
+ const verifications=player.pointDetail.filter(item=>item.source==='verification');
+ const groups=new Map();
+ for(const item of records){const d=Number(item.level.difficulty);if(!groups.has(d))groups.set(d,[]);groups.get(d).push(item)}
+ const recordContent=[...groups.entries()].sort((a,b)=>b[0]-a[0]).map(([d,items])=>pointSourceSection(TIER[d]||'Other',roundPoint(items.reduce((sum,item)=>sum+item.points,0)),items.map(pointSourceRow).join(''),'points-tier')).join('')||'<p class="profile-note">No accepted record points.</p>';
+ const verificationContent=verifications.map(pointSourceRow).join('')||'<p class="profile-note">No verification points.</p>';
+ const awarded=earned.map(pack=>({pack,bonus:packBonus(pack)})).filter(item=>item.bonus>0);
+ const packContent=awarded.map(({pack,bonus})=>`<div class="profile-record points-source-row"><span>${esc(pack.name)}</span><strong class="points-source-value">${pointLabel(bonus)} points</strong></div>`).join('')||'<p class="profile-note">No pack bonus points awarded.</p>';
+ return `<section id="profile-points-breakdown" class="singlepanel points-breakdown" aria-labelledby="points-breakdown-title" ${S.pointsBreakdownPlayer===player.name?'':'hidden'}><h2 id="points-breakdown-title">Points Breakdown</h2><p class="profile-note">Each layout awards points once. When a level has both an accepted record and a verification, its points appear under Verifications. Pack bonuses are separate.${completeCatalog()?'':' These are preview totals while the full catalog loads; pack bonuses are not yet confirmed.'}</p>${pointSourceSection('Accepted Records',player.recordPoints,recordContent)}${pointSourceSection('Verifications',player.verificationPoints,verificationContent)}${pointSourceSection('Packs',player.packPoints,packContent)}<div class="points-breakdown-total"><span>Total Points</span><strong>${pointLabel(player.totalPoints)}</strong></div></section>`;
+}
+document.addEventListener('click',event=>{
+ if(!event.target.closest('[data-points-toggle]'))return;
+ const playerName=playerStats().find(p=>p.name.toLocaleLowerCase('en')===String(S.player||'').trim().toLocaleLowerCase('en'))?.name;
+ if(!playerName)return;
+ S.pointsBreakdownPlayer=S.pointsBreakdownPlayer===playerName?'':playerName;
+ render({keepScroll:true});
+ document.querySelector('[data-points-toggle]')?.focus({preventScroll:true});
+});
+
 function profilePage(){
  const name=String(S.player||'').trim();const player=playerStats().find(p=>p.name.toLocaleLowerCase('en')===name.toLocaleLowerCase('en'));
  if(!player&&clanOf(name))return shell(`<div class="backrow"><button class="backbutton" type="button" data-back-leaderboard="users">‹ Player leaderboard</button></div><section class="singlepanel"><div class="profile-hero">${playerPfp(name)}<div><h1>${clanBadge(clanOf(name))}${esc(name)}</h1><p class="profile-note">Clan test profile · official records for this player are not currently loaded.</p></div></div><div class="profilegrid"><div class="profilestat"><strong>N/A</strong><small>Verified records</small></div><div class="profilestat"><strong>N/A</strong><small>Official points</small></div></div>${hardestCompletionCard(null)}</section>`);
@@ -1698,7 +1746,7 @@ function profilePage(){
    : '<div class="profile-empty">No confirmed earned packs yet. Awards are granted only once the complete official list is loaded.</div>';
  const difficultyContent=`<p class="profile-note">These are only the difficulty packs this player has <strong>not earned</strong>. Complete any 5 layouts in a tier with accepted 100% records or verifications to unlock its pack. Each layout counts once. Expand a pack to see completed levels.</p>${tierPacks.length?`<div class="profile-packs">${tierPacks.map(p=>packTile(p,player)).join('')}</div>`:'<div class="profile-empty">All difficulty packs earned.</div>'}`;
  const otherContent=`<p class="profile-note">Named or special packs not yet earned. Accepted 100% records and verified layouts count. Expand a pack to see the levels still needed.</p>${otherPacks.length?`<div class="profile-packs">${otherPacks.map(p=>packTile(p,player)).join('')}</div>`:'<div class="profile-empty">All other packs earned, or no other packs are defined.</div>'}`;
- return shell(`<div class="backrow"><button class="backbutton" data-back-leaderboard="users">‹ Player leaderboard</button><button class="backbutton" data-page="packs">View all packs ›</button></div><section class="singlepanel"><div class="profile-hero">${playerPfp(player.name)}<div><h1 style="font-size:25px;overflow-wrap:anywhere">${clanBadge(clanOf(player.name))}${esc(player.name)}</h1><p class="profile-subtitle">Public Layout List player profile · <button type="button" class="textbutton" data-copy-profile>Copy profile link ↗</button></p></div></div><div class="profilegrid"><div class="profilestat"><strong>${fmt(player.completions)}</strong><small>Completed layouts</small></div><div class="profilestat"><strong>${fmt(player.recordCount)}</strong><small>Accepted records</small></div><div class="profilestat"><strong>${pointLabel(player.totalPoints)}</strong><small>Total points</small></div><div class="profilestat"><strong>${fmt(earned.length)}</strong><small>Earned packs</small></div></div>${hardestCompletionCard(player)}<p class="profile-note">${pointLabel(player.recordPoints)} record points + ${pointLabel(player.verificationPoints)} verification points + ${pointLabel(player.packPoints)} earned pack points. ${completeCatalog()?'Calculated from all loaded accepted records.':'Preview totals only. Full catalog not verified.'}</p>${!completeCatalog()?'<p class="profile-note">Full catalog not verified in this preview. Pack progress is illustrative; awards are only confirmed when every level and accepted record loads.</p>':''}</section>${profileAccordion('Created Layouts',fmt(player.created.length),createdContent,'created')}${profileAccordion('Verified Layouts',fmt(player.verified.length),verifiedContent,'verified')}${profileAccordion('Accepted Records',fmt(player.recordCount),recordsContent,'records')}${profileAccordion('Earned Packs',fmt(earned.length),earnedContent,'earned')}${profileAccordion('Difficulty Packs',fmt(tierPacks.length)+' unearned',difficultyContent,'difficulty')}${profileAccordion('Other Packs',fmt(otherPacks.length)+' unearned',otherContent,'other')}`);
+ return shell(`<div class="backrow"><button class="backbutton" data-back-leaderboard="users">‹ Player leaderboard</button><button class="backbutton" data-page="packs">View all packs ›</button></div><section class="singlepanel"><div class="profile-hero">${playerPfp(player.name)}<div><h1 style="font-size:25px;overflow-wrap:anywhere">${clanBadge(clanOf(player.name))}${esc(player.name)}</h1><p class="profile-subtitle">Public Layout List player profile · <button type="button" class="textbutton" data-copy-profile>Copy profile link ↗</button></p></div></div><div class="profilegrid"><div class="profilestat"><strong>${fmt(player.completions)}</strong><small>Completed layouts</small></div><div class="profilestat"><strong>${fmt(player.recordCount)}</strong><small>Accepted records</small></div><button type="button" class="profilestat points-toggle" data-points-toggle aria-label="View points breakdown" aria-controls="profile-points-breakdown" aria-expanded="${S.pointsBreakdownPlayer===player.name}"><strong>${pointLabel(player.totalPoints)}</strong><small>Total points <span aria-hidden="true">▾</span></small></button><div class="profilestat"><strong>${fmt(earned.length)}</strong><small>Earned packs</small></div></div>${hardestCompletionCard(player)}<p class="profile-note">${pointLabel(player.recordPoints)} record points + ${pointLabel(player.verificationPoints)} verification points + ${pointLabel(player.packPoints)} earned pack points. ${completeCatalog()?'Calculated from all loaded accepted records.':'Preview totals only. Full catalog not verified.'}</p>${!completeCatalog()?'<p class="profile-note">Full catalog not verified in this preview. Pack progress is illustrative; awards are only confirmed when every level and accepted record loads.</p>':''}</section>${profilePointsBreakdown(player,earned)}${profileAccordion('Created Layouts',fmt(player.created.length),createdContent,'created')}${profileAccordion('Verified Layouts',fmt(player.verified.length),verifiedContent,'verified')}${profileAccordion('Accepted Records',fmt(player.recordCount),recordsContent,'records')}${profileAccordion('Earned Packs',fmt(earned.length),earnedContent,'earned')}${profileAccordion('Difficulty Packs',fmt(tierPacks.length)+' unearned',difficultyContent,'difficulty')}${profileAccordion('Other Packs',fmt(otherPacks.length)+' unearned',otherContent,'other')}`);
 }
 function leaderboardRanks(items){
  const position=new Map();let rank=0,last=null;
