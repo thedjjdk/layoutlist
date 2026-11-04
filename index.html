@@ -1153,11 +1153,15 @@ button.profilestat.points-toggle:focus-visible{outline:2px solid var(--accent);o
 </style>
 <style>
 .difficulty-face{position:absolute;top:7px;right:8px;width:49px;height:49px;background-image:var(--difficulty-sprite,none);background-size:1300% 100%;background-position:var(--face-position) center;background-repeat:no-repeat;pointer-events:none}
-.listcard:has(>.difficulty-face),.detail-with-difficulty{position:relative}
-.listcard:has(>.difficulty-face) .level-card-title-row{padding-right:40px}
+.listcard:has(.level-card-title-row>.difficulty-face),.detail-with-difficulty{position:relative}
+.listcard:has(.level-card-title-row>.difficulty-face) .level-card-title-row{padding-right:40px}
 .detail-with-difficulty>.difficulty-face{top:7px;right:10px;width:66px;height:66px}
 .detail-with-difficulty .detailheading{padding-inline:52px}
-@media(max-width:540px){.difficulty-face{width:38px;height:38px;top:5px;right:5px}.listcard:has(>.difficulty-face) .level-card-title-row{padding-right:31px}.detail-with-difficulty>.difficulty-face{width:47px;height:47px;right:5px}.detail-with-difficulty .detailheading{padding-inline:29px}}
+@media(max-width:780px){
+ .level-card-title-row:has(>.difficulty-face){position:relative;min-height:49px}
+ .level-card-title-row>.difficulty-face{top:0;right:0}
+}
+@media(max-width:540px){.difficulty-face{width:38px;height:38px;top:5px;right:5px}.listcard:has(.level-card-title-row>.difficulty-face) .level-card-title-row{padding-right:42px;min-height:38px}.detail-with-difficulty>.difficulty-face{width:47px;height:47px;right:5px}.detail-with-difficulty .detailheading{padding-inline:29px}}
 </style>
 </head>
 <style id="v34-player-pfps">
@@ -1188,6 +1192,18 @@ button.profilestat.points-toggle:focus-visible{outline:2px solid var(--accent);o
 .leaderboard-table.leaderboard-compact{min-width:0}
 .leaderboard-compact th:nth-child(2),.leaderboard-compact td:nth-child(2){min-width:0;width:auto}
 @media(max-width:780px){.leaderboard-table{min-width:740px}.leaderboard-table th:nth-child(2),.leaderboard-table td:nth-child(2){min-width:190px}}
+
+@media(max-width:780px){
+ .leaderboard-table.leaderboard-compact{table-layout:fixed}
+ .leaderboard-table.leaderboard-compact th,.leaderboard-table.leaderboard-compact td{padding-inline:4px;white-space:normal;overflow-wrap:anywhere}
+ .leaderboard-table.leaderboard-compact th:nth-child(2),.leaderboard-table.leaderboard-compact td:nth-child(2){min-width:0;text-align:left}
+ .leaderboard-compact .leaderboard-user-name{display:flex;flex-wrap:wrap;gap:4px;white-space:normal}
+ .leaderboard-compact .player-link{min-width:0;text-align:left;overflow-wrap:anywhere}
+ .leaderboard-hardest th:nth-child(3){width:53%}
+ .leaderboard-completions th:nth-child(3){width:29%}
+ .leaderboard-completions th:nth-child(4){width:29%}
+ .leaderboard-completions td:nth-child(n+3){white-space:nowrap}
+}
 
 /* Version 38: distinct virtual category below the ranked difficulty tiers. */
 .difficulty-choice[data-difficulty-choice="former-top-1s"]{grid-column:1 / -1}
@@ -1627,7 +1643,7 @@ function listcard(l){
  const thumbnail=proof
  ?`<a class="thumbnail" href="${esc(proof)}" target="_blank" rel="noopener noreferrer" aria-label="Watch verification video for ${esc(l.name)}" title="Open verification video">${img(l)}<span class="thumb-watermark" aria-hidden="true">LL</span></a>`
  :`<button type="button" class="thumbnail" data-level="${esc(l.path)}" aria-label="View level details for ${esc(l.name)}">${img(l)}<span class="thumb-watermark" aria-hidden="true">LL</span></button>`;
- return `<article class="listcard">${difficultyFace(l)}${thumbnail}<div class="listcardmeta"><div class="level-card-title-row"><button type="button" class="textbutton" style="text-align:left;display:block;color:inherit" data-level="${esc(l.path)}" aria-label="View level details for ${esc(l.name)}"><h2><span class="hash">#${fmt(l.rank)} – </span>${esc(l.name||displaySlug(l.path))}</h2></button>${levelBadges(l)}</div><div class="creator">published by ${by.length?by.map(c=>playerButton(c,'inline-player')).join(', '):'<strong>Creator loading…</strong>'}</div><div class="tiernote">${esc(tier(l))} Layout${l.id?' · ID '+esc(l.id):''}${range?' · '+esc(range):''} · ${pointLabel(levelPoints(l))} points (100%)</div></div></article>`
+ return `<article class="listcard">${thumbnail}<div class="listcardmeta"><div class="level-card-title-row">${difficultyFace(l)}<button type="button" class="textbutton" style="text-align:left;display:block;color:inherit" data-level="${esc(l.path)}" aria-label="View level details for ${esc(l.name)}"><h2><span class="hash">#${fmt(l.rank)} – </span>${esc(l.name||displaySlug(l.path))}</h2></button>${levelBadges(l)}</div><div class="creator">published by ${by.length?by.map(c=>playerButton(c,'inline-player')).join(', '):'<strong>Creator loading…</strong>'}</div><div class="tiernote">${esc(tier(l))} Layout${l.id?' · ID '+esc(l.id):''}${range?' · '+esc(range):''} · ${pointLabel(levelPoints(l))} points (100%)</div></div></article>`
 }
 function listPage(){
  const items=getVisible();
@@ -1903,7 +1919,7 @@ function statsPage(){
   :userResults.map(p=>`<tr class="leaderboard-click-row" data-leaderboard-player="${esc(p.name)}" tabindex="0" aria-label="View ${esc(p.name)} player profile"><td>${userRanks.get(p.name.toLowerCase())}</td><td><span class="leaderboard-user-name">${playerPfpUrl(p.name)?`<img loading="lazy" decoding="async" class="leaderboard-player-avatar" src="${esc(playerPfpUrl(p.name))}" alt="">`:""}${playerButton(p.name)}</span></td>${ranking==='hardest'?`<td><button type="button" class="textbutton" data-level="${esc(p.hardest.path)}">#${fmt(p.hardest.rank)} · ${esc(p.hardest.name)}</button></td>`:ranking==='completions'?`<td class="point-total">${fmt(p.completions)}</td><td>${pointLabel(p.totalPoints)}</td>`:`<td class="point-total">${pointLabel(p.totalPoints)}</td><td>${pointLabel(p.recordPoints)}</td><td>${pointLabel(p.verificationPoints)}</td><td>${pointLabel(p.packPoints)}</td><td>${fmt(p.completions)}</td>`}</tr>`).join('');
  const heading=clanMode?'Clan Leaderboard':'User Leaderboard';
  const search=clanMode?S.clanStatsSearch:S.statsSearch;
- return `<div class="container stats-tab-wrap"><div class="wide-tabs stats-tabs" role="group" aria-label="Leaderboard type"><button type="button" data-stats-mode="users" aria-pressed="${!clanMode}" class="${!clanMode?'selected':''}">User Leaderboard</button><button type="button" data-stats-mode="clans" aria-pressed="${clanMode}" class="${clanMode?'selected':''}">Clan Leaderboard</button></div></div>`+shell(`<section class="singlepanel"><h2>${heading}</h2>${rankingTabs}<p class="recordsintro">${ranking==='hardest'?'Ranked by each player’s highest-ranked 100% completion or verification. Players share a place when their completion order can’t be verified.':ranking==='completions'?'Each 100% completion or verification counts once per layout. Total points break ties.':scoringInfo}</p><p class="profile-note">${clanMode?'Clan completions are summed across individual member accounts. If two members have each completed the same layout, that counts as two completions. A member listed twice is counted once. ':''}${completeCatalog()?'Published accepted records are loaded.':'Preview only: live data is incomplete, so rankings and totals may change.'}</p><input type="search" class="filter" style="width:min(100%,420px);margin:10px 0 18px" id="stats-search" placeholder="${clanMode?'Search clans or tags…':'Filter players…'}" value="${esc(search)}" aria-label="${clanMode?'Search clan leaderboard':'Search user leaderboard'}">${status()}${compact?'':'<p class="table-swipe-hint">Swipe the table sideways to see all score columns.</p>'}<div class="leaderboard-scroll" role="region" tabindex="0" aria-label="${heading} table"><table class="recordtable leaderboard-table${compact?' leaderboard-compact':''}"><thead><tr><th>#</th><th>${clanMode?'Clan':'Player'}</th>${ranking==='hardest'?'<th>Hardest completion</th>':ranking==='completions'?'<th>Completions</th><th>Total points</th>':'<th>Total points</th><th>Record points</th><th>Verification points</th><th>Pack bonus</th><th>100%</th>'}${clanMode?'<th>Members</th>':''}</tr></thead><tbody>${rows||`<tr><td colspan="${clanMode?8:ranking==='hardest'?3:compact?4:7}">No matching ${clanMode?'clans':'players'}.</td></tr>`}</tbody></table></div></section>`);
+ return `<div class="container stats-tab-wrap"><div class="wide-tabs stats-tabs" role="group" aria-label="Leaderboard type"><button type="button" data-stats-mode="users" aria-pressed="${!clanMode}" class="${!clanMode?'selected':''}">User Leaderboard</button><button type="button" data-stats-mode="clans" aria-pressed="${clanMode}" class="${clanMode?'selected':''}">Clan Leaderboard</button></div></div>`+shell(`<section class="singlepanel"><h2>${heading}</h2>${rankingTabs}<p class="recordsintro">${ranking==='hardest'?'Ranked by each player’s highest-ranked 100% completion or verification. Players share a place when their completion order can’t be verified.':ranking==='completions'?'Each 100% completion or verification counts once per layout. Total points break ties.':scoringInfo}</p><p class="profile-note">${clanMode?'Clan completions are summed across individual member accounts. If two members have each completed the same layout, that counts as two completions. A member listed twice is counted once. ':''}${completeCatalog()?'Published accepted records are loaded.':'Preview only: live data is incomplete, so rankings and totals may change.'}</p><input type="search" class="filter" style="width:min(100%,420px);margin:10px 0 18px" id="stats-search" placeholder="${clanMode?'Search clans or tags…':'Filter players…'}" value="${esc(search)}" aria-label="${clanMode?'Search clan leaderboard':'Search user leaderboard'}">${status()}${compact?'':'<p class="table-swipe-hint">Swipe the table sideways to see all score columns.</p>'}<div class="leaderboard-scroll" role="region" tabindex="0" aria-label="${heading} table"><table class="recordtable leaderboard-table${compact?' leaderboard-compact leaderboard-'+ranking:''}"><thead><tr><th>#</th><th>${clanMode?'Clan':'Player'}</th>${ranking==='hardest'?'<th>Hardest Completion</th>':ranking==='completions'?'<th>Completions</th><th>Total points</th>':'<th>Total points</th><th>Record points</th><th>Verification points</th><th>Pack bonus</th><th>100%</th>'}${clanMode?'<th>Members</th>':''}</tr></thead><tbody>${rows||`<tr><td colspan="${clanMode?8:ranking==='hardest'?3:compact?4:7}">No matching ${clanMode?'clans':'players'}.</td></tr>`}</tbody></table></div></section>`);
 }
 
 function packPlayerMatches(players){
