@@ -1,5 +1,27 @@
 {
   "version": 1,
-  "updatedAt": null,
-  "records": []
+  "updatedAt": "2026-11-04T04:06:28.968Z",
+  "records": [
+    {
+      "id": "b06e99b2-124c-412e-8dd6-d6e92bdcf889",
+      "levelSlug": "incision",
+      "levelName": "Incision",
+      "levelId": 94668202,
+      "rank": 17,
+      "record": {
+        "user": "DJJDK",
+        "link": "https://www.youtube.com/watch?v=nGvy9F3716M&t=1467s",
+        "percent": 100,
+        "enjoyment": 6,
+        "mobile": false
+      },
+      "status": "pending",
+      "revision": 1,
+      "submittedAt": "2026-11-04T04:06:28.366Z",
+      "publicNote": "",
+      "reviewedBy": null,
+      "reviewedAt": null,
+      "reviewNote": null
+    }
+  ]
 }
