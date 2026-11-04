@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-04T04:09:40.429Z",
+  "updatedAt": "2026-11-04T04:16:20.791Z",
   "records": [
     {
       "id": "b06e99b2-124c-412e-8dd6-d6e92bdcf889",
@@ -25,6 +25,27 @@
       },
       "reviewedAt": "2026-11-04T04:09:40.429Z",
       "reviewNote": "no"
+    },
+    {
+      "id": "e11b5cc2-8a58-47b8-a88e-6133087bc607",
+      "levelSlug": "apollo",
+      "levelName": "APOLLO",
+      "levelId": 133918547,
+      "rank": 1,
+      "record": {
+        "user": "DJ jdk",
+        "link": "https://youtu.be/K-hB0IrcpNw?is=OKZJsEzpG8UMHN_6",
+        "percent": 100,
+        "enjoyment": 5,
+        "mobile": false
+      },
+      "status": "pending",
+      "revision": 1,
+      "submittedAt": "2026-11-04T04:16:20.281Z",
+      "publicNote": "",
+      "reviewedBy": null,
+      "reviewedAt": null,
+      "reviewNote": null
     }
   ]
 }
