@@ -1307,7 +1307,7 @@ function appearancePicker(){
 }
 function appearanceActions(){const themeLabel=S.light?'Switch to dark mode':'Switch to light mode';return `<div class="appearance-tools"><button type="button" class="appearance-button" data-open-palette aria-expanded="${S.paletteOpen}" aria-controls="appearance-popover" aria-label="Choose accent color" title="Customize color"><span class="swatch-dot" aria-hidden="true"></span></button><button type="button" class="appearance-button" data-theme-toggle="true" aria-label="${themeLabel}" title="${themeLabel}">${S.light?THEME_SUN:THEME_MOON}</button></div>`;}
 // Original chart coordinates, in the same order as TIER. Each crop excludes its label.
-const DIFFICULTY_FACES=[[137,20,64],[503,128,172],[137,242,286],[503,241,286],[229,355,400],[320,355,400],[46,467,514],[137,467,514],[229,467,514],[320,467,515],[411,467,516],[503,467,514],[594,462,514]];
+const DIFFICULTY_FACES=[[274,40,128],[1006,256,344],[274,484,572],[1006,482,572],[458,710,800],[640,710,800],[92,934,1028],[274,934,1028],[458,934,1028],[640,934,1030],[822,934,1032],[1006,934,1028],[1188,924,1028]];
 const difficultyChart=new Image();
 let difficultySpriteColor='';
 function difficultyFace(level){
@@ -1350,13 +1350,13 @@ function updateDifficultySprite(color){
  if(!difficultyChart.complete||!difficultyChart.naturalWidth||difficultySpriteColor===color)return;
  const rgb=[1,3,5].map(i=>parseInt(color.slice(i,i+2),16));
  if(rgb.some(n=>!Number.isFinite(n)))return;
- const cell=60,strip=document.createElement('canvas');strip.width=cell*13;strip.height=cell;
+ const cell=120,strip=document.createElement('canvas');strip.width=cell*13;strip.height=cell;
  const context=strip.getContext('2d',{willReadFrequently:true});
  if(!context)return;
  for(let i=0;i<DIFFICULTY_FACES.length;i++){
-  const [x,top,bottom]=DIFFICULTY_FACES[i],w=58,h=bottom-top,left=x-29;
-  context.drawImage(difficultyChart,left,top,w,h,i*cell+1,Math.floor((cell-h)/2),w,h);
-  const start=i*cell+1,dy=Math.floor((cell-h)/2);
+  const [x,top,bottom]=DIFFICULTY_FACES[i],w=116,h=bottom-top,left=x-58;
+  context.drawImage(difficultyChart,left,top,w,h,i*cell+2,Math.floor((cell-h)/2),w,h);
+  const start=i*cell+2,dy=Math.floor((cell-h)/2);
   const frame=context.getImageData(start,dy,w,h),a=frame.data;
   // Remove only chart background connected to the crop perimeter, keeping original eye and mouth shapes.
   const bg=Array.from({length:h},(_,y)=>Array.from(a.slice(y*w*4,y*w*4+3)));
@@ -1387,7 +1387,7 @@ function updateDifficultySprite(color){
   context.putImageData(frame,start,dy);
  }
  const upscale=document.createElement('canvas');
- const scale=3;
+ const scale=1.5;
  upscale.width=strip.width*scale;
  upscale.height=strip.height*scale;
  const renderer=upscale.getContext('2d');
@@ -1398,7 +1398,7 @@ function updateDifficultySprite(color){
  document.documentElement.style.setProperty('--difficulty-sprite','url("'+upscale.toDataURL('image/png')+'")');
 }
 difficultyChart.onload=()=>updateDifficultySprite(S.appearanceColor||THEME_DEFAULT_GREY);
-difficultyChart.src='./difficulty-faces.png';
+difficultyChart.src='./difficulty-faces-hd.jpg';
 
 function applyAppearance(){
  document.body.classList.toggle('light-mode',S.light);
