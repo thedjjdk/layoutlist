@@ -304,6 +304,10 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .form-panel,.admin-panel{border:1px dashed var(--border);background:var(--surface);padding:24px;max-width:860px;margin:0 0 22px}
 .form-panel h1,.admin-panel h1{font-size:25px;margin:0 0 6px}
 .form-panel p,.admin-panel p{color:var(--muted)}
+.record-entries{display:grid;gap:14px}
+.record-entry{min-width:0;border:1px dashed var(--border);padding:12px}
+.record-entry .form-grid{margin-top:0}
+.record-entry [data-remove-record]{justify-self:start}
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px;margin-top:20px}
 .field{display:flex;flex-direction:column;gap:6px;min-width:0}
 .field.wide{grid-column:1/-1}
@@ -1208,6 +1212,7 @@ button.profilestat.points-toggle:focus-visible{outline:2px solid var(--accent);o
  .leaderboard-points th:nth-child(3){width:29%}
  .leaderboard-points td:nth-child(3){white-space:nowrap;vertical-align:top}
  .leaderboard-mobile-breakdown{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 4px;margin-top:6px;color:var(--muted);font-size:10px}
+ .leaderboard-points .leaderboard-clan-name{display:inline;white-space:normal;overflow-wrap:anywhere}
  .leaderboard-mobile-breakdown strong{display:block;color:var(--text);font-size:11px}
 }
 
@@ -1903,6 +1908,11 @@ function hardestLeaderboard(players){
  return entries.sort((a,b)=>a.hardest.rank-b.hardest.rank||a.hardestDate-b.hardestDate||a.name.localeCompare(b.name));
 }
 const STATS_RANKINGS={points:'Points',completions:'Completions',hardest:'Hardest'};
+function mobileLeaderboardBreakdown(item){
+ const scores=[['Records',pointLabel(item.recordPoints)],['Verifications',pointLabel(item.verificationPoints)],['Pack bonus',pointLabel(item.packPoints)],['100%',fmt(item.completions)]];
+ if(item.memberCount!==undefined)scores.push(['Members',fmt(item.memberCount)]);
+ return `<div class="leaderboard-mobile-breakdown">${scores.map(([label,value])=>`<span>${label}<strong>${value}</strong></span>`).join('')}</div>`;
+}
 function statsPage(){
  const clanMode=S.statsMode==='clans';
  const all=playerStats();
@@ -1911,7 +1921,7 @@ function statsPage(){
  if(ranking==='completions')players.sort((a,b)=>b.completions-a.completions||b.totalPoints-a.totalPoints);
  const userScore=ranking==='hardest'?p=>`${p.hardest.rank}/${p.hardestDate}`:ranking==='completions'?p=>`${p.completions}/${p.totalPoints}`:p=>p.totalPoints;
  const compact=ranking!=='points';
- const playerPointsView=!clanMode&&!compact;
+ const pointsView=!compact;
  const rankingTabs=clanMode?'':`<div class="wide-tabs stats-tabs stats-ranking-tabs" role="group" aria-label="Player ranking">${Object.entries(STATS_RANKINGS).map(([key,label])=>`<button type="button" data-stats-ranking="${key}" aria-pressed="${key===ranking}" class="${key===ranking?'selected':''}">${label}</button>`).join('')}</div>`;
  const clans=S.clans.map(clan=>({...clan,score:clanPointSummary(clan,all)}))
   .map(c=>({key:c.tag.trim().toLowerCase(),tag:c.tag,name:c.name,avatar:clanAvatar(c),...c.score,memberCount:c.score.members.length}))
@@ -1922,11 +1932,11 @@ function statsPage(){
  const clanResults=clans.filter(c=>(c.name+' '+c.tag).toLowerCase().includes(S.clanStatsSearch.toLowerCase()));
  const scoringInfo='<strong>Scores follow the Layout List linear and exponential formulas</strong>, with a 1-point Beginner floor and 750 points for #1. A level awards points once per player: verification credit takes precedence over an accepted record for that same level. Pack bonuses are added separately.';
  const rows=clanMode
-  ?clanResults.map(c=>`<tr class="leaderboard-click-row" data-leaderboard-clan="${esc(c.tag)}" tabindex="0" aria-label="View ${esc(c.name)} clan profile"><td>${clanRanks.get(c.key)}</td><td><button class="textbutton leaderboard-clan-name" type="button" data-clan="${esc(c.tag)}">${c.avatar?`<img class="leaderboard-clan-avatar" alt="" src="${esc(c.avatar)}">`:''}<span class="clan-badge">[${esc(c.tag)}]</span> ${esc(c.name)}</button></td><td class="point-total">${pointLabel(c.totalPoints)}</td><td>${pointLabel(c.recordPoints)}</td><td>${pointLabel(c.verificationPoints)}</td><td>${pointLabel(c.packPoints)}</td><td>${fmt(c.completions)}</td><td>${fmt(c.memberCount)}</td></tr>`).join('')
-  :userResults.map(p=>`<tr class="leaderboard-click-row" data-leaderboard-player="${esc(p.name)}" tabindex="0" aria-label="View ${esc(p.name)} player profile"><td>${userRanks.get(p.name.toLowerCase())}</td><td><span class="leaderboard-user-name">${playerPfpUrl(p.name)?`<img loading="lazy" decoding="async" class="leaderboard-player-avatar" src="${esc(playerPfpUrl(p.name))}" alt="">`:""}${playerButton(p.name)}</span>${playerPointsView?`<div class="leaderboard-mobile-breakdown"><span>Records<strong>${pointLabel(p.recordPoints)}</strong></span><span>Verifications<strong>${pointLabel(p.verificationPoints)}</strong></span><span>Pack bonus<strong>${pointLabel(p.packPoints)}</strong></span><span>100%<strong>${fmt(p.completions)}</strong></span></div>`:''}</td>${ranking==='hardest'?`<td><button type="button" class="textbutton" data-level="${esc(p.hardest.path)}">#${fmt(p.hardest.rank)} · ${esc(p.hardest.name)}</button></td>`:ranking==='completions'?`<td class="point-total">${fmt(p.completions)}</td><td>${pointLabel(p.totalPoints)}</td>`:`<td class="point-total">${pointLabel(p.totalPoints)}</td><td>${pointLabel(p.recordPoints)}</td><td>${pointLabel(p.verificationPoints)}</td><td>${pointLabel(p.packPoints)}</td><td>${fmt(p.completions)}</td>`}</tr>`).join('');
+  ?clanResults.map(c=>`<tr class="leaderboard-click-row" data-leaderboard-clan="${esc(c.tag)}" tabindex="0" aria-label="View ${esc(c.name)} clan profile"><td>${clanRanks.get(c.key)}</td><td><button class="textbutton leaderboard-clan-name" type="button" data-clan="${esc(c.tag)}">${c.avatar?`<img class="leaderboard-clan-avatar" alt="" src="${esc(c.avatar)}">`:''}<span class="clan-badge">[${esc(c.tag)}]</span> ${esc(c.name)}</button>${mobileLeaderboardBreakdown(c)}</td><td class="point-total">${pointLabel(c.totalPoints)}</td><td>${pointLabel(c.recordPoints)}</td><td>${pointLabel(c.verificationPoints)}</td><td>${pointLabel(c.packPoints)}</td><td>${fmt(c.completions)}</td><td>${fmt(c.memberCount)}</td></tr>`).join('')
+  :userResults.map(p=>`<tr class="leaderboard-click-row" data-leaderboard-player="${esc(p.name)}" tabindex="0" aria-label="View ${esc(p.name)} player profile"><td>${userRanks.get(p.name.toLowerCase())}</td><td><span class="leaderboard-user-name">${playerPfpUrl(p.name)?`<img loading="lazy" decoding="async" class="leaderboard-player-avatar" src="${esc(playerPfpUrl(p.name))}" alt="">`:""}${playerButton(p.name)}</span>${pointsView?mobileLeaderboardBreakdown(p):''}</td>${ranking==='hardest'?`<td><button type="button" class="textbutton" data-level="${esc(p.hardest.path)}">#${fmt(p.hardest.rank)} · ${esc(p.hardest.name)}</button></td>`:ranking==='completions'?`<td class="point-total">${fmt(p.completions)}</td><td>${pointLabel(p.totalPoints)}</td>`:`<td class="point-total">${pointLabel(p.totalPoints)}</td><td>${pointLabel(p.recordPoints)}</td><td>${pointLabel(p.verificationPoints)}</td><td>${pointLabel(p.packPoints)}</td><td>${fmt(p.completions)}</td>`}</tr>`).join('');
  const heading=clanMode?'Clan Leaderboard':'User Leaderboard';
  const search=clanMode?S.clanStatsSearch:S.statsSearch;
- return `<div class="container stats-tab-wrap"><div class="wide-tabs stats-tabs" role="group" aria-label="Leaderboard type"><button type="button" data-stats-mode="users" aria-pressed="${!clanMode}" class="${!clanMode?'selected':''}">User Leaderboard</button><button type="button" data-stats-mode="clans" aria-pressed="${clanMode}" class="${clanMode?'selected':''}">Clan Leaderboard</button></div></div>`+shell(`<section class="singlepanel${playerPointsView?' leaderboard-points-view':''}"><h2>${heading}</h2>${rankingTabs}<p class="recordsintro">${ranking==='hardest'?'Ranked by each player’s highest-ranked 100% completion or verification. Players share a place when their completion order can’t be verified.':ranking==='completions'?'Each 100% completion or verification counts once per layout. Total points break ties.':scoringInfo}</p><p class="profile-note">${clanMode?'Clan completions are summed across individual member accounts. If two members have each completed the same layout, that counts as two completions. A member listed twice is counted once. ':''}${completeCatalog()?'Published accepted records are loaded.':'Preview only: live data is incomplete, so rankings and totals may change.'}</p><input type="search" class="filter" style="width:min(100%,420px);margin:10px 0 18px" id="stats-search" placeholder="${clanMode?'Search clans or tags…':'Filter players…'}" value="${esc(search)}" aria-label="${clanMode?'Search clan leaderboard':'Search user leaderboard'}">${status()}${compact?'':'<p class="table-swipe-hint">Swipe the table sideways to see all score columns.</p>'}<div class="leaderboard-scroll" role="region" tabindex="0" aria-label="${heading} table"><table class="recordtable leaderboard-table${!clanMode?' leaderboard-'+ranking+(compact?' leaderboard-compact':''):''}"><thead><tr><th>#</th><th>${clanMode?'Clan':'Player'}</th>${ranking==='hardest'?'<th>Hardest Completion</th>':ranking==='completions'?'<th>Completions</th><th>Total points</th>':'<th>Total points</th><th>Record points</th><th>Verification points</th><th>Pack bonus</th><th>100%</th>'}${clanMode?'<th>Members</th>':''}</tr></thead><tbody>${rows||`<tr><td colspan="${clanMode?8:ranking==='hardest'?3:compact?4:7}">No matching ${clanMode?'clans':'players'}.</td></tr>`}</tbody></table></div></section>`);
+ return `<div class="container stats-tab-wrap"><div class="wide-tabs stats-tabs" role="group" aria-label="Leaderboard type"><button type="button" data-stats-mode="users" aria-pressed="${!clanMode}" class="${!clanMode?'selected':''}">User Leaderboard</button><button type="button" data-stats-mode="clans" aria-pressed="${clanMode}" class="${clanMode?'selected':''}">Clan Leaderboard</button></div></div>`+shell(`<section class="singlepanel${pointsView?' leaderboard-points-view':''}"><h2>${heading}</h2>${rankingTabs}<p class="recordsintro">${ranking==='hardest'?'Ranked by each player’s highest-ranked 100% completion or verification. Players share a place when their completion order can’t be verified.':ranking==='completions'?'Each 100% completion or verification counts once per layout. Total points break ties.':scoringInfo}</p><p class="profile-note">${clanMode?'Clan completions are summed across individual member accounts. If two members have each completed the same layout, that counts as two completions. A member listed twice is counted once. ':''}${completeCatalog()?'Published accepted records are loaded.':'Preview only: live data is incomplete, so rankings and totals may change.'}</p><input type="search" class="filter" style="width:min(100%,420px);margin:10px 0 18px" id="stats-search" placeholder="${clanMode?'Search clans or tags…':'Filter players…'}" value="${esc(search)}" aria-label="${clanMode?'Search clan leaderboard':'Search user leaderboard'}">${status()}${compact?'':'<p class="table-swipe-hint">Swipe the table sideways to see all score columns.</p>'}<div class="leaderboard-scroll" role="region" tabindex="0" aria-label="${heading} table"><table class="recordtable leaderboard-table${' leaderboard-'+ranking+(compact?' leaderboard-compact':'')}"><thead><tr><th>#</th><th>${clanMode?'Clan':'Player'}</th>${ranking==='hardest'?'<th>Hardest Completion</th>':ranking==='completions'?'<th>Completions</th><th>Total points</th>':'<th>Total points</th><th>Record points</th><th>Verification points</th><th>Pack bonus</th><th>100%</th>'}${clanMode?'<th>Members</th>':''}</tr></thead><tbody>${rows||`<tr><td colspan="${clanMode?8:ranking==='hardest'?3:compact?4:7}">No matching ${clanMode?'clans':'players'}.</td></tr>`}</tbody></table></div></section>`);
 }
 
 function packPlayerMatches(players){
@@ -2069,7 +2079,7 @@ function clanEditorPanel(){return `<section class="thumbnail-admin"><h2>Manage G
 async function saveClanMembership(remove=false){const form=document.getElementById('clan-editor-form');if(!form)return;const body=Object.fromEntries(new FormData(form));if(!body.tag||!body.playerName){toast('Enter the clan tag and player name.');return}try{const response=await fetch('/api/admin/clans',{method:remove?'DELETE':'PUT',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(body)});const obj=await response.json();if(!response.ok)throw Error(obj.error||'Could not update clan');S.clanMessage=remove?'Player removed from clan.':'Clan membership saved.';await loadClans();render({keepScroll:true})}catch(e){S.clanMessage=e.message;render({keepScroll:true})}}
 async function loadClans(){try{const res=await fetch('/api/clans',{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(Array.isArray(data.clans)&&data.available===true){S.clans=data.clans.map(c=>({...c,demo:false}));S.clanServerLoaded=true;render({keepScroll:true})}}catch{}}
 function footer(){return `<div class="container foot"><span>Unofficial Layout List redesign concept · Inspired by Pointercrate · Not affiliated with Pointercrate</span><span>Data from <a href="${SOURCE}" target="_blank" rel="noopener">The Layout List</a> · <a href="https://laylist.pages.dev/#/" target="_blank" rel="noopener">Official Layout List ↗</a></span></div>`}
-function render({keepScroll=false,restoreInput=false,alignTab=false}={}){const submissionDraft=captureSubmissionDraft();let y=window.scrollY;let previousTabs=app.querySelector('.wide-tabs');let oldTabScroll=previousTabs?.scrollLeft||0;let ae=document.activeElement;let id=(restoreInput||submissionDraft?.focus)&&ae?.id;let cursor=restoreInput&&ae?.selectionStart;const view=S.page==='detail'?detailPage():S.page==='stats'?statsPage():S.page==='profile'?profilePage():S.page==='clan'?clanPage():S.page==='packs'?packPage():S.page==='roulette'?roulettePage():S.page==='grind'?grindPage():S.page==='submit'?submitPage():S.page==='pending'?adminPage():listPage();app.innerHTML=header()+'<div id="dropdown-scrim" class="dropdown-scrim" aria-hidden="true"></div>'+((['list','detail','submit','pending'].includes(S.page))?'':intro())+view+footer();restoreSubmissionDraft(submissionDraft);applyAppearance();applyLanguage();syncDropdownScrim();let currentTabs=app.querySelector('.wide-tabs');if(currentTabs){currentTabs.scrollLeft=oldTabScroll;if(alignTab){let sel=currentTabs.querySelector('[aria-selected=true]');if(sel)currentTabs.scrollLeft=sel.offsetLeft-currentTabs.offsetLeft-(currentTabs.clientWidth-sel.clientWidth)/2}}if(S.page==='submit'&&window.turnstile)queueMicrotask(mountTurnstile);if(keepScroll)window.scrollTo(0,y);if(id){let el=document.getElementById(id);if(el){el.focus();if(Number.isInteger(cursor)&&typeof el.setSelectionRange==='function')try{el.setSelectionRange(cursor,cursor)}catch{}}}}
+function render({keepScroll=false,restoreInput=false,alignTab=false}={}){if(S.page==='submit'&&recordSubmissionBusy&&document.getElementById('record-form'))return;const submissionDraft=captureSubmissionDraft();let y=window.scrollY;let previousTabs=app.querySelector('.wide-tabs');let oldTabScroll=previousTabs?.scrollLeft||0;let ae=document.activeElement;let id=(restoreInput||submissionDraft?.focus)&&ae?.id;let cursor=restoreInput&&ae?.selectionStart;const view=S.page==='detail'?detailPage():S.page==='stats'?statsPage():S.page==='profile'?profilePage():S.page==='clan'?clanPage():S.page==='packs'?packPage():S.page==='roulette'?roulettePage():S.page==='grind'?grindPage():S.page==='submit'?submitPage():S.page==='pending'?adminPage():listPage();app.innerHTML=header()+'<div id="dropdown-scrim" class="dropdown-scrim" aria-hidden="true"></div>'+((['list','detail','submit','pending'].includes(S.page))?'':intro())+view+footer();restoreSubmissionDraft(submissionDraft);applyAppearance();applyLanguage();syncDropdownScrim();let currentTabs=app.querySelector('.wide-tabs');if(currentTabs){currentTabs.scrollLeft=oldTabScroll;if(alignTab){let sel=currentTabs.querySelector('[aria-selected=true]');if(sel)currentTabs.scrollLeft=sel.offsetLeft-currentTabs.offsetLeft-(currentTabs.clientWidth-sel.clientWidth)/2}}if(S.page==='submit'&&window.turnstile)queueMicrotask(mountTurnstile);if(keepScroll)window.scrollTo(0,y);if(id){let el=document.getElementById(id);if(el){el.focus();if(Number.isInteger(cursor)&&typeof el.setSelectionRange==='function')try{el.setSelectionRange(cursor,cursor)}catch{}}}}
 function toast(message){let t=document.getElementById('toast');t.textContent=message;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2500)}
 function rerenderLater(){clearTimeout(deferTimer);deferTimer=setTimeout(()=>{if(['INPUT','SELECT'].includes(document.activeElement?.tagName))return;render({keepScroll:true})},700)}
 async function fetchJson(name,timeout=16000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),timeout);try{let r=await fetch(BASE+encodeURIComponent(name)+'.json',{signal:c.signal,cache:'no-cache'});if(!r.ok)throw Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(tm)}}
@@ -2281,7 +2291,25 @@ document.addEventListener('change',e=>{if(e.target.id==='difficulty'){S.difficul
 
 function syncMenu(){if(S.menuOpen){if(S.difficultyOpen)toggleDifficultyMenu(false);if(S.paletteOpen)togglePaletteMenu(false);if(S.languageOpen)setLanguageOpen(false);}const menu=document.getElementById('site-menu'),toggle=document.querySelector('[data-menu-toggle]');if(!menu||!toggle){syncDropdownScrim();return;}menu.classList.toggle('open',S.menuOpen);menu.setAttribute('aria-hidden',String(!S.menuOpen));menu.inert=!S.menuOpen;toggle.classList.toggle('is-open',S.menuOpen);toggle.setAttribute('aria-expanded',String(S.menuOpen));toggle.setAttribute('aria-label',S.menuOpen?'Close navigation':'Open navigation');syncDropdownScrim()}
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&S.menuOpen){S.menuOpen=false;syncMenu();document.querySelector('[data-menu-toggle]')?.focus()}});
-function submitPage(){let choices=S.levels.filter(l=>l.path&&l.id).map(l=>`<option value="${esc(l.path)}" ${S.submitLevel===l.path?'selected':''}>#${fmt(l.rank)}: ${esc(l.name)} (${esc(tier(l))})</option>`).join('');return `<div class="container"><section class="form-panel"><h1>Submit a record</h1><p>Submit your Layout List run for staff review. Submissions are stored publicly in this website’s GitHub records folder. Only approved records count toward stats; the official Layout List repository is unchanged.</p><p class="note submission-availability">${S.recordConfig?.submissionsEnabled?'Submissions are open.':'Record submissions are not enabled yet.'}</p><div class="form-alert ${S.submitError?'error':''}" role="status" id="submit-feedback" ${S.submitAlert?'':'hidden'}>${esc(S.submitAlert)}</div><form id="record-form" class="form-grid"><div class="field wide"><label for="record-level">Layout *</label><select name="levelSlug" id="record-level" required><option value="">Select a layout</option>${choices}</select><small>Only levels currently listed by the Layout List are valid.</small></div><div class="field"><label for="player-name">Your Geometry Dash username *</label><input id="player-name" name="playerName" required minlength="2" maxlength="50" autocomplete="nickname" placeholder="Your player name"></div><div class="field"><label for="record-percent">Progress percentage *</label><input id="record-percent" name="percentage" type="number" inputmode="numeric" min="1" max="100" step="1" required placeholder="100"></div><div class="field"><label for="record-hz">Refresh rate (Hz)</label><input id="record-hz" name="hz" type="number" min="1" max="10000" step="1" placeholder="240"></div><div class="field"><label for="record-enjoyment">Enjoyment (0–10, optional)</label><input id="record-enjoyment" name="enjoyment" type="number" min="0" max="10" step="1" placeholder="8"></div><div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="mobile" style="width:auto;min-height:auto"> Played on mobile</label></div><div class="field wide"><label for="record-proof">Proof video (HTTPS URL) *</label><input id="record-proof" name="videoUrl" required type="url" pattern="https://.*" placeholder="https://youtu.be/..." maxlength="500"><small>Paste an accessible video link. A proof link is required; uploads are not hosted here.</small></div><div class="field wide"><label for="record-comments">Public note (optional)</label><textarea id="record-comments" name="comments" maxlength="800" placeholder="Public details for the reviewer. Do not include private information."></textarea></div><div class="field" hidden aria-hidden="true"><label for="form-site">Website</label><input id="form-site" name="website" tabindex="-1" autocomplete="off"></div><div class="field wide" id="turnstile-container"></div><div class="field wide"><label style="display:flex;align-items:flex-start;gap:8px;font-weight:450"><input style="width:auto;min-height:auto;margin:5px 0" type="checkbox" required name="confirm">I confirm this submission is genuine, I have permission to share its proof link, and I understand the submission and review will be stored publicly.</label></div><div class="field wide"><button class="primary-action" type="submit" id="submit-record-button" ${S.recordConfig?.submissionsEnabled?'':'disabled'}>Submit for review</button></div></form><p class="security-note">Submissions are checked by the record service and saved as pending. Staff must enter their individual code to approve or reject a record. Pending and rejected records do not award points.</p></section></div>`}
+const MAX_RECORD_ENTRIES=5;
+const RECORD_ENTRY_FIELDS=['levelSlug','percentage','hz','enjoyment','mobile','comments'];
+const RECORD_SHARED_FIELDS=['playerName','videoUrl','website','confirm'];
+let recordSubmissionBusy=false;
+const recordSubmissionIds=new Map();
+function recordEntry(values={}){
+ const choices=S.levels.filter(l=>l.path&&l.id).map(l=>`<option value="${esc(l.path)}" ${values.levelSlug===l.path?'selected':''}>#${fmt(l.rank)}: ${esc(l.name)} (${esc(tier(l))})</option>`).join('');
+ return `<fieldset class="record-entry"><legend>Layout record</legend><div class="form-grid">
+ <label class="field wide">Layout *<select name="levelSlug" required><option value="">Select a layout</option>${choices}</select></label>
+ <label class="field">Progress percentage *<input name="percentage" type="number" inputmode="numeric" min="1" max="100" step="1" required placeholder="100" value="${esc(values.percentage??'')}"></label>
+ <label class="field">Refresh rate (Hz)<input name="hz" type="number" min="1" max="10000" step="1" placeholder="240" value="${esc(values.hz??'')}"></label>
+ <label class="field">Enjoyment (0–10, optional)<input name="enjoyment" type="number" min="0" max="10" step="1" value="${esc(values.enjoyment??'')}"></label>
+ <label class="field" style="display:flex;flex-direction:row;gap:8px;align-items:center"><input type="checkbox" name="mobile" style="width:auto;min-height:auto" ${values.mobile?'checked':''}> Played on mobile</label>
+ <label class="field wide">Public note (optional)<textarea name="comments" maxlength="800" placeholder="Video timestamp and any public details for the reviewer.">${esc(values.comments??'')}</textarea></label>
+ <div class="field wide" data-record-turnstile></div>
+ <button type="button" class="secondary-action" data-remove-record hidden>Remove layout</button>
+ </div></fieldset>`;
+}
+function submitPage(){return `<div class="container"><section class="form-panel"><h1>Submit records</h1><p>Submit up to five Layout List runs from one proof video for staff review. Submissions are stored publicly in this website’s GitHub records folder. Only approved records count toward stats; the official Layout List repository is unchanged.</p><p class="note submission-availability">${S.recordConfig?.submissionsEnabled?'Submissions are open.':'Record submissions are not enabled yet.'}</p><div class="form-alert ${S.submitError?'error':''}" role="status" id="submit-feedback" ${S.submitAlert?'':'hidden'}>${esc(S.submitAlert)}</div><form id="record-form" class="form-grid"><div class="field"><label for="player-name">Your Geometry Dash username *</label><input id="player-name" name="playerName" required minlength="2" maxlength="50" autocomplete="nickname" placeholder="Your player name"></div><div class="field wide"><label for="record-proof">Proof video (HTTPS URL) *</label><input id="record-proof" name="videoUrl" required type="url" pattern="https://.*" placeholder="https://youtu.be/..." maxlength="500"><small>Paste an accessible video link. A proof link is required; uploads are not hosted here.</small></div><div class="record-entries field wide" id="record-entries">${recordEntry({levelSlug:S.submitLevel})}</div><div class="field wide"><button type="button" class="secondary-action" data-add-record>Add another layout</button><small>Each layout is reviewed separately. Add video timestamps in the layout notes.</small></div><div class="field" hidden aria-hidden="true"><label for="form-site">Website</label><input id="form-site" name="website" tabindex="-1" autocomplete="off"></div><div class="field wide"><label style="display:flex;align-items:flex-start;gap:8px;font-weight:450"><input style="width:auto;min-height:auto;margin:5px 0" type="checkbox" required name="confirm">I confirm this submission is genuine, I have permission to share its proof link, and I understand the submission and review will be stored publicly.</label></div><div class="field wide"><button class="primary-action" type="submit" id="submit-record-button" ${S.recordConfig?.submissionsEnabled?'':'disabled'}>Submit for review</button></div></form><p class="security-note">Submissions are checked by the record service and saved as pending. Staff must enter their individual code to approve or reject a record. Pending and rejected records do not award points.</p></section></div>`}
 
 function thumbnailEditorPanel(){
  const t=S.thumbnailEditor;
@@ -2389,20 +2417,82 @@ async function loadConfig(){
   finally{recordConfigPromise=null}
  })();return recordConfigPromise;
 }
-function mountTurnstile(){const el=document.getElementById('turnstile-container');if(el&&turnstileSiteKey&&window.turnstile&&!el.dataset.mounted){el.dataset.mounted='1';window.turnstile.render(el,{sitekey:turnstileSiteKey,action:'record-submit',theme:S.light?'light':'dark'})}}
+function mountTurnstile(){
+ if(!turnstileSiteKey||!window.turnstile)return;
+ document.querySelectorAll('[data-record-turnstile]:not([data-widget])').forEach(el=>{
+  el.dataset.widget=window.turnstile.render(el,{sitekey:turnstileSiteKey,action:'record-submit',theme:S.light?'light':'dark',size:'compact'});
+ });
+}
+function removeRecordEntry(entry){
+ const widget=entry.querySelector('[data-widget]')?.dataset.widget;
+ if(widget)window.turnstile?.remove(widget);
+ entry.remove();
+}
+function syncRecordEntries(form){
+ const entries=form.querySelectorAll('.record-entry');
+ entries.forEach(entry=>entry.querySelector('[data-remove-record]').hidden=entries.length===1);
+ form.querySelector('[data-add-record]').disabled=entries.length>=MAX_RECORD_ENTRIES;
+}
+function recordFieldValues(scope,names){
+ return Object.fromEntries(names.map(name=>{
+  const field=scope.querySelector(`[name="${name}"]`);
+  return [name,field.type==='checkbox'?field.checked:field.value];
+ }));
+}
+function showRecordFeedback(message,error=false){
+ S.submitAlert=message;S.submitError=error;
+ const feedback=document.getElementById('submit-feedback');
+ if(feedback){feedback.hidden=false;feedback.textContent=message;feedback.classList.toggle('error',error);feedback.scrollIntoView({block:'nearest'});}
+}
 async function submitRecord(form){
- const btn=form.querySelector('[type=submit]');if(!S.recordConfig?.submissionsEnabled){toast('Record submissions are not enabled yet.');return}
- btn.disabled=true;btn.textContent='Submitting…';
- const data=Object.fromEntries(new FormData(form));data.publicConsent=!!form.elements.confirm?.checked;data.mobile=!!form.elements.mobile?.checked;
- const signature=JSON.stringify([data.levelSlug,data.playerName,data.percentage,data.videoUrl,data.hz,data.enjoyment,data.mobile,data.comments]);
- if(S.submissionSignature!==signature){S.recordSubmissionId=crypto.randomUUID();S.submissionSignature=signature}
- data.submissionId=S.recordSubmissionId;data.turnstileToken=form.querySelector('[name="cf-turnstile-response"]')?.value||'';
- try{
-  const result=await recordRequest('records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-  if(typeof result.id!=='string'||!['pending','accepted','rejected'].includes(result.status))throw Error('The service did not confirm that the record was saved.');
-  S.submitError=false;S.submitAlert=result.duplicate?'This record was already saved. Status: '+(result.status==='accepted'?'approved':result.status)+'.':'Submission '+result.id+' saved. Status: pending staff approval.';
-  S.recordSubmissionId=null;S.submissionSignature=null;S.clearRecordDraft=true;render({keepScroll:true});
- }catch(error){S.submitError=true;S.submitAlert=error.message;const feedback=document.getElementById('submit-feedback');if(feedback){feedback.hidden=false;feedback.textContent=S.submitAlert;feedback.classList.add('error')}if(window.turnstile)window.turnstile.reset();btn.disabled=false;btn.textContent='Submit for review'}
+ if(recordSubmissionBusy)return;
+ if(!S.recordConfig?.submissionsEnabled){toast('Record submissions are not enabled yet.');return}
+ const {confirm:publicConsent,...shared}=recordFieldValues(form,RECORD_SHARED_FIELDS);
+ const entries=[...form.querySelectorAll('.record-entry')].map(entry=>{
+  const values=recordFieldValues(entry,RECORD_ENTRY_FIELDS);
+  const level=entry.querySelector('[name="levelSlug"]').selectedOptions[0].textContent;
+  const widget=entry.querySelector('[data-widget]')?.dataset.widget;
+  return {entry,values,level,widget,token:widget?window.turnstile.getResponse(widget):''};
+ });
+ if(new Set(entries.map(({values})=>values.levelSlug)).size!==entries.length){
+  showRecordFeedback('Choose a different layout for each record.',true);return;
+ }
+ if(turnstileSiteKey&&entries.some(item=>!item.token)){
+  showRecordFeedback('Complete the verification for each layout before submitting.',true);return;
+ }
+ const button=form.querySelector('[type=submit]');
+ const controls=[...form.querySelectorAll('input,select,textarea,button')].filter(control=>!control.disabled);
+ const saved=[],failed=[];
+ recordSubmissionBusy=true;
+ controls.forEach(control=>control.disabled=true);
+ button.textContent='Submitting…';
+ for(const item of entries){
+  const data={...shared,...item.values,publicConsent};
+  const signature=JSON.stringify(data);
+  if(!recordSubmissionIds.has(signature))recordSubmissionIds.set(signature,crypto.randomUUID());
+  try{
+   const result=await recordRequest('records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,submissionId:recordSubmissionIds.get(signature),turnstileToken:item.token})});
+   if(typeof result.id!=='string'||!['pending','accepted','rejected'].includes(result.status))throw Error('The service did not confirm that the record was saved.');
+   saved.push(`${item.level} (${result.duplicate?'already saved, ':''}${result.status==='accepted'?'approved':result.status})`);
+   recordSubmissionIds.delete(signature);
+   removeRecordEntry(item.entry);
+  }catch(error){
+   failed.push(`${item.level}: ${error.message}`);
+   if(item.widget)window.turnstile?.reset(item.widget);
+  }
+ }
+ recordSubmissionBusy=false;
+ const summary=[saved.length?`Saved ${saved.length} of ${entries.length}: ${saved.join('; ')}.`:'',failed.length?`Still to submit: ${failed.join('; ')}`:''].filter(Boolean).join(' ');
+ if(!failed.length){
+  recordSubmissionIds.clear();
+  S.clearRecordDraft=true;
+  if(S.page==='submit')render({keepScroll:true});
+ }else{
+  controls.forEach(control=>control.disabled=false);
+  button.textContent='Submit for review';
+  syncRecordEntries(form);
+ }
+ showRecordFeedback(summary,!!failed.length);
 }
 async function loadAdmin(){
  if(S.page!=='pending')return;
@@ -2437,12 +2527,41 @@ document.addEventListener('click',event=>{
 });
 document.addEventListener('submit',event=>{if(event.target.id==='record-review-form'){event.preventDefault();finalizeRecord(event.target)}});
 function captureSubmissionDraft(){
+ const form=document.getElementById('record-form');
+ if(!form)return null;
+ form.querySelectorAll('[data-widget]').forEach(el=>window.turnstile?.remove(el.dataset.widget));
  if(S.clearRecordDraft){S.clearRecordDraft=false;return null}
- if(S.page!=='submit')return null;const form=document.getElementById('record-form');if(!form)return null;
- const values={};for(const name of ['levelSlug','playerName','percentage','hz','enjoyment','videoUrl','comments','website','mobile','confirm']){const field=form.elements[name];if(field)values[name]=field.type==='checkbox'?field.checked:field.value}
- return {values,focus:!!document.activeElement?.closest?.('#record-form')};
+ if(S.page!=='submit')return null;
+ return {values:recordFieldValues(form,RECORD_SHARED_FIELDS),entries:[...form.querySelectorAll('.record-entry')].map(entry=>recordFieldValues(entry,RECORD_ENTRY_FIELDS)),focus:!!document.activeElement?.closest?.('#record-form')};
 }
-function restoreSubmissionDraft(draft){if(!draft)return;const form=document.getElementById('record-form');if(!form)return;for(const [name,value]of Object.entries(draft.values)){const field=form.elements[name];if(field){if(field.type==='checkbox')field.checked=value;else field.value=value}}}
+function restoreSubmissionDraft(draft){
+ const form=document.getElementById('record-form');
+ if(!form)return;
+ if(draft){
+  for(const [name,value]of Object.entries(draft.values)){
+   const field=form.elements[name];
+   if(field.type==='checkbox')field.checked=value;else field.value=value;
+  }
+  form.querySelector('#record-entries').innerHTML=draft.entries.map(recordEntry).join('');
+ }
+ syncRecordEntries(form);
+}
+document.addEventListener('click',e=>{
+ const button=e.target.closest('[data-add-record],[data-remove-record]');
+ const form=button?.closest('#record-form');
+ if(!form||recordSubmissionBusy)return;
+ if(button.hasAttribute('data-add-record')){
+  const list=form.querySelector('#record-entries');
+  if(list.children.length>=MAX_RECORD_ENTRIES)return;
+  list.insertAdjacentHTML('beforeend',recordEntry());
+  list.lastElementChild.querySelector('select').focus();
+  mountTurnstile();
+ }else{
+  removeRecordEntry(button.closest('.record-entry'));
+  form.querySelector('[data-add-record]').focus();
+ }
+ syncRecordEntries(form);
+});
 
 document.addEventListener('submit',e=>{if(e.target.id==='thumbnail-editor-form'){e.preventDefault();saveThumbnailOverride(false);return;}});
 document.addEventListener('submit',e=>{if(e.target.id==='record-form'){e.preventDefault();submitRecord(e.target)}});
