@@ -1310,7 +1310,7 @@ function appearancePicker(){
 }
 function appearanceActions(){const themeLabel=S.light?'Switch to dark mode':'Switch to light mode';return `<div class="appearance-tools"><button type="button" class="appearance-button" data-open-palette aria-expanded="${S.paletteOpen}" aria-controls="appearance-popover" aria-label="Choose accent color" title="Customize color"><span class="swatch-dot" aria-hidden="true"></span></button><button type="button" class="appearance-button" data-theme-toggle="true" aria-label="${themeLabel}" title="${themeLabel}">${S.light?THEME_SUN:THEME_MOON}</button></div>`;}
 // Original chart coordinates, in the same order as TIER. Each crop excludes its label.
-const DIFFICULTY_FACES=[[274,40,128],[1006,256,344],[274,484,572],[1006,482,572],[458,710,800],[640,710,800],[92,934,1028],[274,934,1028],[458,934,1028],[640,934,1030],[822,934,1032],[1006,934,1028],[1188,924,1028]];
+const DIFFICULTY_FACES=[[274,40,128],[1006,256,344],[274,484,572],[1006,482,572],[458,710,800],[640,710,800],[92,934,1028],[274,934,1028],[458,934,1028],[640,934,1030],[822,934,1030],[1006,934,1028],[1188,924,1028]];
 const difficultyChart=new Image();
 let difficultySpriteColor='';
 function difficultyFace(level){
