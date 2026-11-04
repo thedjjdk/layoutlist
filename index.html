@@ -1182,7 +1182,9 @@ button.profilestat.points-toggle:focus-visible{outline:2px solid var(--accent);o
 .leaderboard-table th:nth-child(7),.leaderboard-table td:nth-child(7){width:47px;padding-left:4px;padding-right:5px;text-align:center}
 .leaderboard-table th:nth-child(8),.leaderboard-table td:nth-child(8){width:51px;padding-left:5px;padding-right:5px;text-align:center}
 .leaderboard-table .leaderboard-user-name{max-width:none}
-.stats-tabs.stats-ranking-tabs{height:44px;margin:10px 0 14px}
+.stats-tabs.stats-ranking-tabs{grid-template-columns:repeat(3,minmax(0,1fr));height:62px;margin:10px 0 14px}
+.stats-ranking-tabs button{white-space:nowrap;font-size:15px}
+@media(max-width:540px){.stats-ranking-tabs button{padding-inline:4px!important}}
 .leaderboard-table.leaderboard-compact{min-width:0}
 .leaderboard-compact th:nth-child(2),.leaderboard-compact td:nth-child(2){min-width:0;width:auto}
 @media(max-width:780px){.leaderboard-table{min-width:740px}.leaderboard-table th:nth-child(2),.leaderboard-table td:nth-child(2){min-width:190px}}
