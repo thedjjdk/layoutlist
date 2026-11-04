@@ -1151,6 +1151,14 @@ button.profilestat.points-toggle:focus-visible{outline:2px solid var(--accent);o
 .points-breakdown-total{display:flex;justify-content:space-between;gap:16px;padding-top:16px;margin-top:16px;border-top:1px solid var(--border);font-weight:850}
 @media(max-width:540px){.points-source>summary{gap:7px;padding:11px;font-size:12px}.points-source>summary strong{font-size:11px}.points-source-content{padding:0 8px 10px}.points-source-row{align-items:flex-start}.points-source-value{align-self:flex-end}}
 </style>
+<style>
+.difficulty-face{position:absolute;top:7px;right:8px;width:49px;height:49px;background-image:var(--difficulty-sprite,none);background-size:1300% 100%;background-position:var(--face-position) center;background-repeat:no-repeat;pointer-events:none}
+.listcard:has(>.difficulty-face),.detail-with-difficulty{position:relative}
+.listcard:has(>.difficulty-face) .level-card-title-row{padding-right:40px}
+.detail-with-difficulty>.difficulty-face{top:7px;right:10px;width:66px;height:66px}
+.detail-with-difficulty .detailheading{padding-inline:52px}
+@media(max-width:540px){.difficulty-face{width:38px;height:38px;top:5px;right:5px}.listcard:has(>.difficulty-face) .level-card-title-row{padding-right:31px}.detail-with-difficulty>.difficulty-face{width:47px;height:47px;right:5px}.detail-with-difficulty .detailheading{padding-inline:29px}}
+</style>
 </head>
 <style id="v34-player-pfps">
 /* Version 34: distinct user profile images, matching roster and leaderboard avatars. */
@@ -1298,11 +1306,66 @@ function appearancePicker(){
  </div>`;
 }
 function appearanceActions(){const themeLabel=S.light?'Switch to dark mode':'Switch to light mode';return `<div class="appearance-tools"><button type="button" class="appearance-button" data-open-palette aria-expanded="${S.paletteOpen}" aria-controls="appearance-popover" aria-label="Choose accent color" title="Customize color"><span class="swatch-dot" aria-hidden="true"></span></button><button type="button" class="appearance-button" data-theme-toggle="true" aria-label="${themeLabel}" title="${themeLabel}">${S.light?THEME_SUN:THEME_MOON}</button></div>`;}
+// Original chart coordinates, in the same order as TIER. Each crop excludes its label.
+const DIFFICULTY_FACES=[[137,20,64],[503,128,172],[137,242,286],[503,241,286],[229,355,400],[320,355,400],[46,467,514],[137,467,514],[229,467,514],[320,467,515],[411,467,516],[503,467,514],[594,462,514]];
+const difficultyChart=new Image();
+let difficultySpriteColor='';
+function difficultyFace(level){
+ const i=Number(level.difficulty);
+ if(!Number.isInteger(i)||!DIFFICULTY_FACES[i])return '';
+ return `<span class="difficulty-face" role="img" aria-label="${esc(TIER[i])} difficulty" title="${esc(TIER[i])} Layout" style="--face-position:${i*100/12}%"></span>`;
+}
+function updateDifficultySprite(color){
+ if(!difficultyChart.complete||!difficultyChart.naturalWidth||difficultySpriteColor===color)return;
+ const rgb=[1,3,5].map(i=>parseInt(color.slice(i,i+2),16));
+ if(rgb.some(n=>!Number.isFinite(n)))return;
+ const cell=60,strip=document.createElement('canvas');strip.width=cell*13;strip.height=cell;
+ const context=strip.getContext('2d',{willReadFrequently:true});
+ if(!context)return;
+ for(let i=0;i<DIFFICULTY_FACES.length;i++){
+  const [x,top,bottom]=DIFFICULTY_FACES[i],w=58,h=bottom-top,left=x-29;
+  context.drawImage(difficultyChart,left,top,w,h,i*cell+1,Math.floor((cell-h)/2),w,h);
+  const start=i*cell+1,dy=Math.floor((cell-h)/2);
+  const frame=context.getImageData(start,dy,w,h),a=frame.data;
+  // Remove only chart background connected to the crop perimeter, keeping original eye and mouth shapes.
+  const bg=Array.from({length:h},(_,y)=>Array.from(a.slice(y*w*4,y*w*4+3)));
+  const seen=new Uint8Array(w*h),stack=[];
+  for(let xx=0;xx<w;xx++)stack.push(xx,(h-1)*w+xx);
+  for(let yy=1;yy<h-1;yy++)stack.push(yy*w,yy*w+w-1);
+  while(stack.length){
+   const p=stack.pop();if(seen[p])continue;seen[p]=1;
+   const pos=p*4,y=Math.floor(p/w),xx=p%w,b=bg[y];
+   const distance=(a[pos]-b[0])**2+(a[pos+1]-b[1])**2+(a[pos+2]-b[2])**2;
+   if(distance>55**2)continue;
+   a[pos+3]=0;
+   if(xx>0)stack.push(p-1);if(xx<w-1)stack.push(p+1);
+   if(y>0)stack.push(p-w);if(y<h-1)stack.push(p+w);
+  }
+  for(let p=0;p<a.length;p+=4){
+   if(!a[p+3])continue;
+   const max=Math.max(a[p],a[p+1],a[p+2]),min=Math.min(a[p],a[p+1],a[p+2]);
+   const light=(max+min)/510;
+   // Neutral outline and teeth stay neutral; only originally colored pixels take the accent.
+   const tint=Math.max(0,Math.min(1,(max-min-8)/38));
+   for(let c=0;c<3;c++){
+    const tone=light<=.5?rgb[c]*light*2:rgb[c]+(255-rgb[c])*(light-.5)*2;
+    a[p+c]=Math.round(a[p+c]*(1-tint)+tone*tint);
+   }
+  }
+  context.putImageData(frame,start,dy);
+ }
+ difficultySpriteColor=color;
+ document.documentElement.style.setProperty('--difficulty-sprite','url("'+strip.toDataURL('image/png')+'")');
+}
+difficultyChart.onload=()=>updateDifficultySprite(S.appearanceColor||THEME_DEFAULT_GREY);
+difficultyChart.src='./difficulty-faces.png';
+
 function applyAppearance(){
  document.body.classList.toggle('light-mode',S.light);
  const root=document.documentElement;
  const color=S.appearanceColor;
  const source=color||THEME_DEFAULT_GREY;
+ updateDifficultySprite(source);
  const {h,s,v}=hexToHsv(source);
  let ink,btn,hover,ink2;
  if(!color){ink=S.light?'#565e66':'#d0d3d8';ink2=S.light?'#60666d':'#a0a6ae';btn=S.light?'#707780':'#626970';hover=S.light?'#87919a':'#79818a'}
@@ -1519,7 +1582,7 @@ function listcard(l){
  const thumbnail=proof
  ?`<a class="thumbnail" href="${esc(proof)}" target="_blank" rel="noopener noreferrer" aria-label="Watch verification video for ${esc(l.name)}" title="Open verification video">${img(l)}<span class="thumb-watermark" aria-hidden="true">LL</span></a>`
  :`<button type="button" class="thumbnail" data-level="${esc(l.path)}" aria-label="View level details for ${esc(l.name)}">${img(l)}<span class="thumb-watermark" aria-hidden="true">LL</span></button>`;
- return `<article class="listcard">${thumbnail}<div class="listcardmeta"><div class="level-card-title-row"><button type="button" class="textbutton" style="text-align:left;display:block;color:inherit" data-level="${esc(l.path)}" aria-label="View level details for ${esc(l.name)}"><h2><span class="hash">#${fmt(l.rank)} – </span>${esc(l.name||displaySlug(l.path))}</h2></button>${levelBadges(l)}</div><div class="creator">published by ${by.length?by.map(c=>playerButton(c,'inline-player')).join(', '):'<strong>Creator loading…</strong>'}</div><div class="tiernote">${esc(tier(l))} Layout${l.id?' · ID '+esc(l.id):''}${range?' · '+esc(range):''} · ${pointLabel(levelPoints(l))} points (100%)</div></div></article>`
+ return `<article class="listcard">${difficultyFace(l)}${thumbnail}<div class="listcardmeta"><div class="level-card-title-row"><button type="button" class="textbutton" style="text-align:left;display:block;color:inherit" data-level="${esc(l.path)}" aria-label="View level details for ${esc(l.name)}"><h2><span class="hash">#${fmt(l.rank)} – </span>${esc(l.name||displaySlug(l.path))}</h2></button>${levelBadges(l)}</div><div class="creator">published by ${by.length?by.map(c=>playerButton(c,'inline-player')).join(', '):'<strong>Creator loading…</strong>'}</div><div class="tiernote">${esc(tier(l))} Layout${l.id?' · ID '+esc(l.id):''}${range?' · '+esc(range):''} · ${pointLabel(levelPoints(l))} points (100%)</div></div></article>`
 }
 function listPage(){
  const items=getVisible();
@@ -1545,7 +1608,7 @@ function songDownloadUrl(value){
 }
 function detailPage(){let l=current();if(!l)return shell(`<div class="empty">No level selected.</div>`);let i=S.levels.indexOf(l),prev=S.levels[i-1],next=S.levels[i+1];const url=thumbFor(l),proof=safeMediaUrl(l.verification),songDownload=songDownloadUrl(l.songLink);
 let video=proof?`<a class="videoarea detail-video-link" href="${esc(proof)}" target="_blank" rel="noopener noreferrer" aria-label="Watch verification video for ${esc(l.name)}" title="Watch verification on the original video site">${url?`<img src="${esc(url)}" alt="Verification video thumbnail for ${esc(l.name)}" onerror="this.remove()">`:''}<span class="videoempty">View verification video</span></a>`:`<div class="videoarea"><span class="videoempty">No verification video is listed in the public data.</span></div>`;
-let records=Array.isArray(l.records)?[...l.records].sort((a,b)=>Number(b.percent)-Number(a.percent)):[];let completions=records.filter(r=>Number(r.percent)===100).length;return shell(`<div class="backrow"><button class="backbutton" data-page="list">‹ Back to list</button><div class="prevnext"><button data-level="${prev?esc(prev.path):''}" ${!prev?'disabled':''}>‹ Previous</button><button data-level="${next?esc(next.path):''}" ${!next?'disabled':''}>Next ›</button></div></div><section class="singlepanel"><div class="detailheading"><h1>#${fmt(l.rank)} – ${esc(l.name)}</h1><div class="level-detail-badges">${levelBadges(l)}</div><p>created by ${(l.creators||[]).length?(l.creators||[]).map(n=>playerButton(n)).join(', '):'Not provided'}${l.verifier?` · verified by ${playerButton(l.verifier)}`:''}</p></div>${video}<div class="facts"><div class="fact"><strong><button data-copy="${esc(l.id||'')}">${l.id?esc(l.id)+' ⧉':'Not available'}</button></strong><span>LEVEL ID</span></div><div class="fact"><strong>${esc(tier(l))}</strong><span>DIFFICULTY TIER</span></div><div class="fact"><strong>${l.percentToQualify!=null?esc(l.percentToQualify)+'%':'N/A'}</strong><span>RECORD REQUIREMENT</span></div><div class="fact"><strong>${fmt(records.length)}</strong><span>ACCEPTED RECORDS</span></div></div><p class="statline"><strong>Layout score:</strong> ${pointLabel(levelPoints(l))} points at 100%${Number(l.percentToQualify)<100&&Number(l.difficulty)>=4?` · ${esc(l.percentToQualify)}% record: ${pointLabel(levelPoints(l,Number(l.percentToQualify)))} points`:''}</p>${l.song?`<p class="statline">Song: <strong>${esc(l.song)}</strong></p>`:''}${songDownload?`<p class="statline"><a class="secondary-action song-download" style="display:inline-block;text-decoration:none" href="${esc(songDownload)}" target="_blank" rel="noopener noreferrer" aria-label="Download song for ${esc(l.name)}">Download song ↗</a></p>`:''}${l.verification?`<p class="statline"><a href="${esc(l.verification)}" target="_blank" rel="noopener noreferrer">Watch verification on the original video site ↗</a></p>`:''}</section><section class="singlepanel"><h2>Records</h2><p class="recordsintro"><button type="button" class="primary-action" data-submit-level="${esc(l.path)}">Submit a record for this level</button></p><p class="recordsintro">${l.percentToQualify!=null?`Records require at least <strong>${esc(l.percentToQualify)}%</strong> progress. `:''}<strong>${fmt(records.length)}</strong> ${l.previewOnly?'sample ':''}accepted records; <strong>${fmt(completions)}</strong> completions at 100%.${l.previewOnly?' Offline preview only; full record list loads from the official source when available.':''}</p>${l.pending?'<div class="empty">Record details are loading from the Layout List.</div>':records.length?`<div style="overflow-x:auto"><table class="recordtable"><thead><tr><th>Record holder</th><th>Progress</th><th>Video proof</th></tr></thead><tbody>${records.map(r=>`<tr><td class="${Number(r.percent)===100?'complete':''}">${r.user?playerButton(r.user):'Unknown'}${r.siteApproved?' <small title="Approved by this website’s admins; not automatically part of the official Layout List" style="color:#72bfd9">(site-approved)</small>':''}</td><td class="${Number(r.percent)===100?'complete':''}">${Number(r.percent)||0}%</td><td>${r.link?`<a href="${esc(r.link)}" target="_blank" rel="noopener noreferrer">View video ↗</a>`:'No link'}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">No accepted records are currently listed for this level.</p>'}</section>`)}
+let records=Array.isArray(l.records)?[...l.records].sort((a,b)=>Number(b.percent)-Number(a.percent)):[];let completions=records.filter(r=>Number(r.percent)===100).length;return shell(`<div class="backrow"><button class="backbutton" data-page="list">‹ Back to list</button><div class="prevnext"><button data-level="${prev?esc(prev.path):''}" ${!prev?'disabled':''}>‹ Previous</button><button data-level="${next?esc(next.path):''}" ${!next?'disabled':''}>Next ›</button></div></div><section class="singlepanel detail-with-difficulty">${difficultyFace(l)}<div class="detailheading"><h1>#${fmt(l.rank)} – ${esc(l.name)}</h1><div class="level-detail-badges">${levelBadges(l)}</div><p>created by ${(l.creators||[]).length?(l.creators||[]).map(n=>playerButton(n)).join(', '):'Not provided'}${l.verifier?` · verified by ${playerButton(l.verifier)}`:''}</p></div>${video}<div class="facts"><div class="fact"><strong><button data-copy="${esc(l.id||'')}">${l.id?esc(l.id)+' ⧉':'Not available'}</button></strong><span>LEVEL ID</span></div><div class="fact"><strong>${esc(tier(l))}</strong><span>DIFFICULTY TIER</span></div><div class="fact"><strong>${l.percentToQualify!=null?esc(l.percentToQualify)+'%':'N/A'}</strong><span>RECORD REQUIREMENT</span></div><div class="fact"><strong>${fmt(records.length)}</strong><span>ACCEPTED RECORDS</span></div></div><p class="statline"><strong>Layout score:</strong> ${pointLabel(levelPoints(l))} points at 100%${Number(l.percentToQualify)<100&&Number(l.difficulty)>=4?` · ${esc(l.percentToQualify)}% record: ${pointLabel(levelPoints(l,Number(l.percentToQualify)))} points`:''}</p>${l.song?`<p class="statline">Song: <strong>${esc(l.song)}</strong></p>`:''}${songDownload?`<p class="statline"><a class="secondary-action song-download" style="display:inline-block;text-decoration:none" href="${esc(songDownload)}" target="_blank" rel="noopener noreferrer" aria-label="Download song for ${esc(l.name)}">Download song ↗</a></p>`:''}${l.verification?`<p class="statline"><a href="${esc(l.verification)}" target="_blank" rel="noopener noreferrer">Watch verification on the original video site ↗</a></p>`:''}</section><section class="singlepanel"><h2>Records</h2><p class="recordsintro"><button type="button" class="primary-action" data-submit-level="${esc(l.path)}">Submit a record for this level</button></p><p class="recordsintro">${l.percentToQualify!=null?`Records require at least <strong>${esc(l.percentToQualify)}%</strong> progress. `:''}<strong>${fmt(records.length)}</strong> ${l.previewOnly?'sample ':''}accepted records; <strong>${fmt(completions)}</strong> completions at 100%.${l.previewOnly?' Offline preview only; full record list loads from the official source when available.':''}</p>${l.pending?'<div class="empty">Record details are loading from the Layout List.</div>':records.length?`<div style="overflow-x:auto"><table class="recordtable"><thead><tr><th>Record holder</th><th>Progress</th><th>Video proof</th></tr></thead><tbody>${records.map(r=>`<tr><td class="${Number(r.percent)===100?'complete':''}">${r.user?playerButton(r.user):'Unknown'}${r.siteApproved?' <small title="Approved by this website’s admins; not automatically part of the official Layout List" style="color:#72bfd9">(site-approved)</small>':''}</td><td class="${Number(r.percent)===100?'complete':''}">${Number(r.percent)||0}%</td><td>${r.link?`<a href="${esc(r.link)}" target="_blank" rel="noopener noreferrer">View video ↗</a>`:'No link'}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">No accepted records are currently listed for this level.</p>'}</section>`)}
 // V15 profiles are based only on accepted published/site-approved records.
 // Identity is a normalized player name, not an account claim or authenticated GD profile.
 // V16 points: Layout List js/config.js score() curve with Beginner minimum
