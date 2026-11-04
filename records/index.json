@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-04T04:16:20.791Z",
+  "updatedAt": "2026-11-04T04:18:14.235Z",
   "records": [
     {
       "id": "b06e99b2-124c-412e-8dd6-d6e92bdcf889",
@@ -39,13 +39,16 @@
         "enjoyment": 5,
         "mobile": false
       },
-      "status": "pending",
-      "revision": 1,
+      "status": "rejected",
+      "revision": 2,
       "submittedAt": "2026-11-04T04:16:20.281Z",
       "publicNote": "",
-      "reviewedBy": null,
-      "reviewedAt": null,
-      "reviewNote": null
+      "reviewedBy": {
+        "id": "djjdk",
+        "name": "DJJDK"
+      },
+      "reviewedAt": "2026-11-04T04:18:14.235Z",
+      "reviewNote": "No"
     }
   ]
 }
